@@ -1,26 +1,44 @@
 import numpy as np
-#from pygadgetreader import readsnap
+from pygadgetreader import readsnap
 import sys
-from gadget_reader import read_snap
+from nba.ios.gadget_reader import read_snap
 
-def load_snapshot(snapname, snapformat, masscol=3):
+def load_snapshot(snapname, snapformat, quantity, ptype):
+
 	if snapformat == 1:
-		pos = readsnap(snapname, 'pos', 'dm')
-		vel = readsnap(snapname, 'vel', 'dm')
-		mass = readsnap(snapname, 'mass', 'dm')
-	elif snapformat == 2:
-		snap = np.loadtxt(snapname)
-		pos = snap[:,0:3]
-		mass = snap[:,masscol]
+		q = readsnap(snapname, quantity, ptype)
+
 	elif snapformat == 3:
-		pos = read_snap(snapname, 'PartType1', 'Coordinates')
-		vel = read_snap(snapname, 'PartType1', 'Velocities')
-		mass = read_snap(snapname, 'PartType1', 'Masses')
+		if quantity == 'pos':
+			q = 'Coordinates'
+				
+		elif quantity == 'vel':
+			q = 'Velocities'
+	
+		elif quantity == 'mass':
+			q = 'Masses'
+				
+		elif quantity == 'pot':
+			q = 'Potential'
+				
+		elif quantity == 'pid':
+			q = 'ParticleIDs'
+
+		elif quantity == 'acc':
+			q = 'Acceleration'
+				
+		if ptype == "dm":
+			ptype =	'PartType1'			
+		if ptype == "disk":
+			ptype =	'PartType2'			
+		if ptype == "bulge":
+			ptype =	'PartType3'
+			
+		q = read_snap(snapname+".hdf5", ptype, q)
 		#a = read_snap(snapname, 'PartType1', 'Acceleration')
 		#potential = read_snap(snapname, 'PartType1', 'Potential')
-		ids = read_snap(snapname, 'PartType1', 'ParticleIDs')
 		#print(mass[0], a[0], potential[0])
 	else : 
-		print('Wrong snapshot format: (1) Gadget, (2) ASCII')
+		print('Wrong snapshot format: (1) Gadget2/3, (2) ASCII, (3) Gadget4 (HDF5)')
 		sys.exit()
-	return np.ascontiguousarray(pos), np.ascontiguousarray(vel), np.ascontiguousarray(mass)
+	return np.ascontiguousarray(q)

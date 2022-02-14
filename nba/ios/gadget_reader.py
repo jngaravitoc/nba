@@ -33,11 +33,7 @@ def read_header(snap_name):
 	## time 
 	## 
 	f = h5py.File(snap_name, 'r')
-	print(f.keys())
-	if "PartType1" in f.keys():
-		print("Yes")
-	#print(h.iter())
-	#print("Loading '{}' of particles types '{}' from snapshot: '{}'".format(properties, partType, snap_name))
+	print("Loading '{}' of particles types '{}' from snapshot: '{}'".format(properties, partType, snap_name))
 
 def is_parttype_in_file(snap_name, partype):
 	## Check if partype is present in file

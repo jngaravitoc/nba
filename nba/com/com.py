@@ -201,7 +201,7 @@ def get_com(pos, vel, mass, method):
 
     """
     if method == 'shrinking':
-        pos_com, vel_com = com.shrinking_sphere(pos, vel, mass)
+        pos_com, vel_com = shrinking_sphere(pos, vel, mass)
 
     elif method == 'diskpot':
         # TODO : Make this function generic to sims with multiple disks!
@@ -211,11 +211,11 @@ def get_com(pos, vel, mass, method):
         pos_disk = readsnap(path+snap, snapformat,  'pos', 'disk')
         vel_disk = readsnap(path+snap, snapformat,  'vel', 'disk')
         pot_disk = readsnap(path+snap, snapformat, 'pot', 'disk')
-        pos_com, vel_com = com.com_disk_potential(pos_disk, vel_disk, pot_disk)
+        pos_com, vel_com = com_disk_potential(pos_disk, vel_disk, pot_disk)
         del pos_disk, vel_disk, pot_disk
 
     elif method == 'mean_pos':
-        pos_com, vel_com = com.mean_pos(pos, vel, mass)
+        pos_com, vel_com = mean_pos(pos, vel, mass)
 
     return pos_com, vel_com
 
