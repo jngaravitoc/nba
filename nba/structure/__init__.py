@@ -1,2 +1,2 @@
-
+from .structure import Structure 
 

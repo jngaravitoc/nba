@@ -14,8 +14,8 @@ radius.
 Requirements:
 -------------
 Numpy :
-Astropy : 
-Scikit learn : 
+Astropy :
+Scikit learn :
 
 """
 
@@ -29,15 +29,15 @@ from numpy import linalg as la
 class Kinematics:
     """
     Class that compute several kinematics properties of a DM halo.
-    
+
     """
     def __init__(self, pos, vel):
         self.pos = pos
         self.vel = vel
-        self.r = (pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)**0.5 
-        self.v = (vel[:,0]**2 + vel[:,1]**2 + vel[:,2]**2)**0.5 
-        
-       
+        self.r = (pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)**0.5
+        self.v = (vel[:,0]**2 + vel[:,1]**2 + vel[:,2]**2)**0.5
+
+
     def pos_cartesian_to_galactic(self):
         """
         Transforms carteisian coordinates to galactic.
@@ -45,11 +45,11 @@ class Kinematics:
         Parameters:
         -----------
         pos : 3d-numpy array.
-        
+
         returns:
         --------
         l : numpy.array([]) in radians
-        
+
         b : numpy.array([]) in radians
 
         """
@@ -64,7 +64,7 @@ class Kinematics:
         b_degrees = c_gal.b.radian
 
         return l_degrees, b_degrees
-    
+
     def galactic_coordinates_center(self):
         """
         Tranform system to the solar system barycenter.
@@ -72,41 +72,41 @@ class Kinematics:
         r_sun = (-8.1, 0, 0)
         v_sun = (11.1, 232.24, 7.25)
         velocities not included for now.
-        
+
         """
-        
+
         pos = np.copy(self.pos)
         #vel = np.copy(self.pos)
-        
+
         pos[:,0] = self.pos[:,0] - 8.1 # kpc
         pos[:,2] = self.pos[:,2] + 0.027 # kpc
         #vel[:,0] = self.vel[:,0] - 11.1 # km/s
         #vel[:,1] = self.vel[:,1] - 232.24 # km/s
         #vel[:,2] = self.vel[:,2] - 7.25 # km/s
         return pos
-    
+
     def vel_cartesian_to_spherical(self, xyz, vxyz):
         """
         Transfromates velocites from the cartessian to spherical coordinates.
-        
+
         theta : [0, np.pi] measured from the north pole.
         phi : [0, 2*np.pi] measured from x=0 towards positive y.
-        
-        v_r = sin(theta)cos(phi) \hat{v_x} + sin(theta)sin(phi) \hat{v_y} + cos(theta) \hat{v_z} 
+
+        v_r = sin(theta)cos(phi) \hat{v_x} + sin(theta)sin(phi) \hat{v_y} + cos(theta) \hat{v_z}
         v_theta = cos(theta)cos(phi) \hat{v_x} + cos(theta)sin(phi) \hat{v_y} + sin(\theta) \hat{v_z}
         v_phi = -sin \hat{v_x} + cos(phi) \hat{v_y}
-        
+
         returns:
         --------
         v_r : np.array
         v_theta : np.array
         v_phi : np.array
-        
+
         """
-        
+
         r = np.sqrt(xyz[:,0]**2 + xyz[:,1]**2 + xyz[:,2]**2)
-        
-        theta = np.arccos(xyz[:,2]/r) 
+
+        theta = np.arccos(xyz[:,2]/r)
         phi = np.arctan2(xyz[:,1], xyz[:,0])
 
         v_r = np.sin(theta)*np.cos(phi)*vxyz[:,0] + \
@@ -124,8 +124,8 @@ class Kinematics:
 
 
     def orbpole(self):
-        # Hacked from Ekta's code 
-        # r x v in cartessian coordinates! 
+        # Hacked from Ekta's code
+        # r x v in cartessian coordinates!
         uu = np.cross(self.pos, self.vel)
         # |r.v|
         uumag = la.norm(uu, axis=1)
@@ -140,13 +140,13 @@ class Kinematics:
         return gl, gb
 
     def part_angular_momentum(self):
-        # r x v in cartessian coordinates! 
+        # r x v in cartessian coordinates!
         L = np.cross(self.pos, self.vel)
         # |r.v|
         Lmag = la.norm(L, axis=1)
         #norm = L.T/Lmag
-        return L[:,0], L[:,1], L[:,2], Lmag 
-   
+        return L[:,0], L[:,1], L[:,2], Lmag
+
     def total_angular_momentum(self):
         """
         Angular momentum of the halo in cartessian coordinates
@@ -158,25 +158,25 @@ class Kinematics:
     def vel_cartesian_to_galactic(self, xyz, vxyz):
         """
         Transfromates velocites from the cartessian to spherical coordinates.
-        Very usefull when computing velocities in the galactic coordinates! 
-        
+        Very usefull when computing velocities in the galactic coordinates!
+
         theta : [-np.pi/2, np.pi/2] measured from z=0
         phi : [0, 2*np.pi] measured from x=0 towards positive y.
-        
-        v_r = cos(theta)cos(phi) \hat{v_x} + cos(theta)sin(phi) \hat{v_y} + sin(theta) \hat{v_z} 
+
+        v_r = cos(theta)cos(phi) \hat{v_x} + cos(theta)sin(phi) \hat{v_y} + sin(theta) \hat{v_z}
         v_b = -sin(theta)cos(phi) \hat{v_x}  - cos(theta)sin(phi) \hat{v_y} + sin(\theta) \hat{v_z}
         v_l = -sin \hat{v_x} + cos(phi) \hat{v_y}
-        
+
         returns:
         --------
         v_r : np.array
         v_b : np.array
         v_l : np.array
-        
+
         """
         r = np.sqrt(xyz[:,0]**2 + xyz[:,1]**2 + xyz[:,2]**2)
-        
-        theta = np.arcsin(xyz[:,2]/r)  
+
+        theta = np.arcsin(xyz[:,2]/r)
         phi = np.arctan2(xyz[:,1], xyz[:,0])
 
         vr = np.cos(theta)*np.cos(phi)*vxyz[:,0] + \
@@ -202,8 +202,8 @@ class Kinematics:
             Array with the cartesian coordinates of the particles
         vel : 3d numpy array
             Array with the cartesian velocities of the particles
-            
-        **kwargs: 
+
+        **kwargs:
             LSR : computes the velocity dispersion using the velocities in the galactic frame.
 
         Returns:
@@ -216,22 +216,22 @@ class Kinematics:
             The value of sigma_phi
 
         """
-        
-        
+
+
         if 'xyz' and 'vxyz' in kwargs:
             xyz = kwargs['xyz']
             vxyz = kwargs['vxyz']
-            
+
         else:
             xyz = self.pos
             vxyz = self.vel
-        
+
         if "LSR" in kwargs:
             vr, v_theta, v_phi = self.vel_cartesian_to_galactic(xyz=xyz, vxyz=vxyz)
         else:
             vr, v_theta, v_phi = self.vel_cartesian_to_spherical(xyz=xyz, vxyz=vxyz)
-     
-        
+
+
         sigma_r = np.std(vr)
         sigma_theta = np.std(v_theta)
         sigma_phi = np.std(v_phi)
@@ -245,28 +245,28 @@ class Kinematics:
         Parameters:
         -----------
         kwargs : LSR (to compute coordinates in LSR system)
-        
+
         return:
         -------
         v_r : np.array of radial velocities
-        v_theta : np.array of polar velocities. 
+        v_theta : np.array of polar velocities.
                   for LSR uses :
-                  for spherical : 
+                  for spherical :
         v_phi : np.array with azimuthal velocities.
         """
         if 'xyz' and 'vxyz' in kwargs:
             xyz = kwargs['xyz']
             vxyz = kwargs['vxyz']
-            
+
         else:
             xyz = self.pos
             vxyz = self.vel
-            
+
         if "LSR" in kwargs:
             v_r, v_theta, v_phi = self.vel_cartesian_to_galactic(xyz=xyz, vxyz=vxyz)
         else:
             v_r, v_theta, v_phi = self.vel_cartesian_to_spherical(xyz=xyz, vxyz=vxyz)
-            
+
         return np.mean(v_r), np.mean(v_theta), np.mean(v_phi)
 
 
@@ -274,7 +274,7 @@ class Kinematics:
     def beta(self, **kwargs):
         """
         Computes the anisotropy $\beta$ defined as:
-        
+
         beta = 1 - (sigma_t^2 / 2*sigma_r^2)
 
 
@@ -284,21 +284,21 @@ class Kinematics:
         Beta : double
             The value of the anisotropy parameter.
         """
-        
+
         # This doesn't seem to be the best way of doing this. But it works!
         if 'xyz' and 'vxyz' in kwargs:
             xyz = kwargs['xyz']
             vxyz = kwargs['vxyz']
-            
+
         else:
             xyz = self.pos
             vxyz = self.vel
-            
+
         if "LSR" in kwargs:
-            sigma_r, sigma_theta, sigma_phi = self.velocity_dispersion(xyz=xyz, vxyz=vxyz, LSR='yes')   
+            sigma_r, sigma_theta, sigma_phi = self.velocity_dispersion(xyz=xyz, vxyz=vxyz, LSR='yes')
         else:
             sigma_r, sigma_theta, sigma_phi = self.velocity_dispersion(xyz=xyz, vxyz=vxyz)
-            
+
         sigma_t = ((sigma_theta**2 + sigma_phi**2))**0.5
         Beta = 1 - sigma_t**2.0/(2.0*sigma_r**2.0)
         return Beta
@@ -326,7 +326,7 @@ class Kinematics:
         vmean_phi : numpy array
 
         """
-            
+
         if 'xyz' and 'vxyz' in kwargs:
             xyz = kwargs['xyz']
             vxyz = kwargs['vxyz']
@@ -335,7 +335,7 @@ class Kinematics:
             xyz = self.pos
             vxyz = self.vel
             r = self.r
-            
+
         dr = np.linspace(rmin, rmax, nbins)
         dr += (dr[1] - dr[0])/2.
 
@@ -349,14 +349,14 @@ class Kinematics:
 
         for i in range(len(dr)-1):
             index = np.where((r<dr[i+1]) & (r>dr[i]))[0]
-            
+
             if quantity == 'dispersions':
                 vr_q_r[i], vtheta_q_r[i], vphi_q_r[i] = self.velocity_dispersion(xyz=xyz[index], vxyz=vxyz[index])
             elif quantity == 'mean':
                 vr_q_r[i], vtheta_q_r[i], vphi_q_r[i] = self.velocities_means(xyz=xyz[index], vxyz=vxyz[index])
             elif quantity == 'beta':
                 beta_dr[i] = self.beta(xyz=xyz[index], vxyz=vxyz[index])
-                
+
         if quantity == 'beta':
             return beta_dr
         elif ((quantity == 'dispersions') | (quantity == 'mean')):
@@ -401,7 +401,7 @@ class Kinematics:
             for j in range(len(d_l_rads)-1):
                 index = np.where((l<d_l_rads[j+1]) & (l>d_l_rads[j]) &\
                                  (b>d_b_rads[i]) & (b<d_b_rads[i+1]))
-                
+
                 if quantity == 'dispersions':
                     vr_octants[:,k], v_theta_octants[:,k], v_phi_octants[:,k]  = self.profiles(xyz=self.pos[index], \
                                                                                                vxyz=self.vel[index],\
@@ -419,16 +419,16 @@ class Kinematics:
                     beta[:,k]  = self.profiles(xyz=self.pos[index], vxyz=self.vel[index],\
                                                nbins=nbins, quantity=quantity, rmin=rmin, \
                                                rmax=rmax)
-                
+
                 k+=1
         if ((quantity == 'dispersions') | (quantity == 'mean')):
             return vr_octants, v_theta_octants, v_phi_octants
         elif quantity == 'beta':
             return beta
-    
+
     def slice_NN(self, xbins, ybins, n_n, d_slice, quantity,\
                           relative=False, LSR=False, **kwargs):
-        
+
         """
         Returns a 2d histogram of the anisotropy parameter in galactic coordinates.
 
@@ -443,13 +443,13 @@ class Kinematics:
         d_slice : float
             galactocentric distance to make the slice cut.
         shell_width:
-        
+
         quanity: string
             Compute a kinematic quantity (dispersions, mean, beta)
-            
+
         relative :  If True, the velocity dispersion is computed relative to the
                     mean. (default = False)
-        
+
         ** kwargs
 
         Returns:
@@ -461,7 +461,7 @@ class Kinematics:
             2d array with the tangential velocity dispersions.
         """
 
-        ## Defining the 
+        ## Defining the
         d_b_rads = np.linspace(-np.pi/2., np.pi/2., bbins+1)
         d_l_rads = np.linspace(-np.pi, np.pi, lbins+1)
         ## Defining the 2d arrays for the velocity dispersions.
@@ -469,13 +469,13 @@ class Kinematics:
             sigma_r_grid = np.zeros((lbins, bbins))
             sigma_theta_grid = np.zeros((lbins, bbins))
             sigma_phi_grid = np.zeros((lbins, bbins))
-            
+
         elif quantity == 'beta':
             beta_grid = np.zeros((lbins, bbins))
 
         xyz = self.pos
         vxyz = self.vel
-        
+
         r = (xyz[:,0]**2 + xyz[:,1]**2 + xyz[:,2]**2)**0.5
 
         # Finding the NN.
@@ -484,7 +484,7 @@ class Kinematics:
         ngbrs = neigh.fit(xyz)
 
         # Computing mean velocity dispersions inside a spherical shell
- 
+
         # This goes from l = -180 to l = 180
         for i in range(len(d_l_rads)-1):
             # This goes from b = -90 to b = 90
@@ -492,12 +492,12 @@ class Kinematics:
                 # Goes from l and b to cartessian. Check this
                 # Finding the nearest neighbors.
                 distances, indices = neigh.kneighbors([pos_grid])
-                
+
                 if quantity == 'dispersions':
                     if LSR == True:
                         sigma_r, sigma_theta, sigma_phi = self.velocity_dispersion(xyz=xyz[indices[0,:]],\
                                                                                    vxyz=vxyz[indices[0,:]],\
-                                                                                   LSR='yes')         
+                                                                                   LSR='yes')
                     else:
                         sigma_r, sigma_theta, sigma_phi = self.velocity_dispersion(xyz=xyz[indices[0,:]],\
                                                                                    vxyz=vxyz[indices[0,:]])
@@ -510,37 +510,37 @@ class Kinematics:
                                                                             vxyz=vxyz[indices[0,:]])
                 elif quantity == 'beta':
                     if LSR == True:
-                        beta = self.beta(xyz=xyz[indices[0,:]], vxyz=vxyz[indices[0,:]], LSR='yes')                    
+                        beta = self.beta(xyz=xyz[indices[0,:]], vxyz=vxyz[indices[0,:]], LSR='yes')
                     else:
                         beta = self.beta(xyz=xyz[indices[0,:]], vxyz=vxyz[indices[0,:]])
 
-                
+
                 if ((relative==True) & ((quantity=='dispersions') | (quantity=='mean'))):
                     sigma_theta_grid[i][j] = sigma_theta - sigma_theta_mean
                     sigma_phi_grid[i][j] = sigma_phi - sigma_phi_mean
                     sigma_r_grid[i][j] = sigma_r - sigma_r_mean
-                    
+
                 elif ((relative==True) & (quantity=='beta')):
                     beta_grid[i][j] = beta - beta_grid_mean
-                    
+
                 elif ((quantity=='dispersions') | (quantity=='mean')):
-                    sigma_theta_grid[i][j] = sigma_theta 
-                    sigma_phi_grid[i][j] = sigma_phi 
+                    sigma_theta_grid[i][j] = sigma_theta
+                    sigma_phi_grid[i][j] = sigma_phi
                     sigma_r_grid[i][j] = sigma_r
-                    
+
                 elif (quantity=='beta'):
-                    beta_grid[i][j] = beta               
+                    beta_grid[i][j] = beta
                 k+=1
-                
+
         if ((quantity == 'dispersions') | (quantity == 'mean')):
             return sigma_r_grid, sigma_theta_grid, sigma_phi_grid
-        
+
         elif quantity == 'beta':
             return beta_grid
-    
+
     def shell_NN_galactic(self, lbins, bbins, n_n, d_slice, shell_width, quantity,\
                           relative=False, LSR=False, lmin=-np.pi, lmax=np.pi, **kwargs):
-        
+
         """
         Returns a 2d histogram of the anisotropy parameter in galactic coordinates.
 
@@ -555,13 +555,13 @@ class Kinematics:
         d_slice : float
             galactocentric distance to make the slice cut.
         shell_width:
-        
+
         quanity: string
             Compute a kinematic quantity (dispersions, mean, beta)
-            
+
         relative :  If True, the velocity dispersion is computed relative to the
                     mean. (default = False)
-        
+
         ** kwargs
 
         Returns:
@@ -573,7 +573,7 @@ class Kinematics:
             2d array with the tangential velocity dispersions.
         """
 
-        ## Defining the 
+        ## Defining the
         d_b_rads = np.linspace(-np.pi/2., np.pi/2., bbins+1)
         d_l_rads = np.linspace(lmin, lmax, lbins+1)
         ## Defining the 2d arrays for the velocity dispersions.
@@ -581,7 +581,7 @@ class Kinematics:
             sigma_r_grid = np.zeros((lbins, bbins))
             sigma_theta_grid = np.zeros((lbins, bbins))
             sigma_phi_grid = np.zeros((lbins, bbins))
-            
+
         elif quantity == 'beta':
             beta_grid = np.zeros((lbins, bbins))
 
@@ -589,7 +589,7 @@ class Kinematics:
             xyz = self.galactic_coordinates_center()
         else:
             xyz = self.pos
-        
+
         vxyz = self.vel
         r = (xyz[:,0]**2 + xyz[:,1]**2 + xyz[:,2]**2)**0.5
 
@@ -601,15 +601,15 @@ class Kinematics:
         # Computing mean velocity dispersions inside a spherical shell
         if relative==True:
             index_cut =  np.where((r<(d_slice+shell_width/2.)) & (r>(d_slice-shell_width/2.)))
-            
+
             if quantity == 'dispersions':
                 sigma_r_mean, sigma_theta_mean, sigma_phi_mean = self.velocity_dispersion(xyz=xyz[index_cut],\
                                                                                           vxyz=vxyz[index_cut])
-                
+
             elif quantity == 'mean':
                 sigma_r_mean, sigma_theta_mean, sigma_phi_mean = self.velocities_means(xyz=xyz[index_cut],\
                                                                                        vxyz=vxyz[index_cut])
-                
+
             elif quantity == 'beta':
                 beta_grid_mean = self.beta(xyz=xyz[index_cut], vxyz=vxyz[index_cut])
 
@@ -624,12 +624,12 @@ class Kinematics:
                 pos_grid = gc.cartesian.xyz.value
                 # Finding the nearest neighbors.
                 distances, indices = neigh.kneighbors([pos_grid])
-                
+
                 if quantity == 'dispersions':
                     if LSR == True:
                         sigma_r, sigma_theta, sigma_phi = self.velocity_dispersion(xyz=xyz[indices[0,:]],\
                                                                                    vxyz=vxyz[indices[0,:]],\
-                                                                                   LSR='yes')         
+                                                                                   LSR='yes')
                     else:
                         sigma_r, sigma_theta, sigma_phi = self.velocity_dispersion(xyz=xyz[indices[0,:]],\
                                                                                    vxyz=vxyz[indices[0,:]])
@@ -642,81 +642,30 @@ class Kinematics:
                                                                             vxyz=vxyz[indices[0,:]])
                 elif quantity == 'beta':
                     if LSR == True:
-                        beta = self.beta(xyz=xyz[indices[0,:]], vxyz=vxyz[indices[0,:]], LSR='yes')                    
+                        beta = self.beta(xyz=xyz[indices[0,:]], vxyz=vxyz[indices[0,:]], LSR='yes')
                     else:
                         beta = self.beta(xyz=xyz[indices[0,:]], vxyz=vxyz[indices[0,:]])
 
-                
+
                 if ((relative==True) & ((quantity=='dispersions') | (quantity=='mean'))):
                     sigma_theta_grid[i][j] = sigma_theta - sigma_theta_mean
                     sigma_phi_grid[i][j] = sigma_phi - sigma_phi_mean
                     sigma_r_grid[i][j] = sigma_r - sigma_r_mean
-                    
+
                 elif ((relative==True) & (quantity=='beta')):
                     beta_grid[i][j] = beta - beta_grid_mean
-                    
+
                 elif ((quantity=='dispersions') | (quantity=='mean')):
-                    sigma_theta_grid[i][j] = sigma_theta 
-                    sigma_phi_grid[i][j] = sigma_phi 
+                    sigma_theta_grid[i][j] = sigma_theta
+                    sigma_phi_grid[i][j] = sigma_phi
                     sigma_r_grid[i][j] = sigma_r
-                    
+
                 elif (quantity=='beta'):
-                    beta_grid[i][j] = beta               
+                    beta_grid[i][j] = beta
                 k+=1
-                
+
         if ((quantity == 'dispersions') | (quantity == 'mean')):
             return sigma_r_grid, sigma_theta_grid, sigma_phi_grid
-        
+
         elif quantity == 'beta':
             return beta_grid
-
-        
-class Vizuals:
-    """
-    Class for plotting several halo quantities.
-    
-    """
-    def __init__(self, quantiy):
-        self.quantity = quantity
-        
-    def quiver_plot(self, **kwargs):
-        return 0
-        
-    def all_sky_galactic(self, lbins, bbins ,**kwargs):
-        m = Basemap(projection='moll',lon_0=0, lat_0=0)
-        fig = figure(figsize=(6, 4.5))
-        x = np.linspace(-180, 180, lbins)
-        y = np.linspace(-90, 90, bins)
-        
-        X, Y = meshgrid(x, y)
-        llmc, blmc = m(llmc, blmc)
-        
-        if 'contours' in kwargs:
-            levels = [1, 1.2]
-
-            im = m.contour(X, Y, self.quantity.T/np.mean(self.quantity) , levels=levels, 
-                      extent=(-180, 180, -90, 90), latlon=True, colors='k', alpha=0.7)
-
-        im = m.contourf(X, Y, (sigma.T-np.mean(sigma)), 100,  
-                       origin='lower',
-                       cmap='Spectral_r', latlon=True)
-
-        m.scatter(llmc, blmc, marker='*', s=80, c='k', facecolors='none', alpha=0.6)
-        m.drawmeridians(np.arange(-180, 180, 90), linewidth=1.5, labels=[True, True, True])
-        m.drawparallels(np.arange(-90, 90, 45), linewidth=1.5)
-        xlabel('$l[^{\circ}]$')
-        ylabel('$b[^{\circ}]$')
-        #title(r'$\Delta {} ({}kpc)$'.format(component, dist))
-        title(r'$ {} ({}kpc)$'.format(component, dist))
-        cbar_ax2 = fig.add_axes([0.05, 0.1, 0.9, 0.03])
-        cbar2 = colorbar(im, cax=cbar_ax2, orientation='horizontal')
-        #cbar_ticks2 = np.arange(-15, 16, 5)
-        cbar2.set_ticks(cbar_ticks2)
-        #cbar2.set_label('$\mathrm{[km/s]}$')
-        cbar2.set_label('$v_r$')
-
-        savefig(figname + '.pdf', bbox_inches='tight')
-        savefig(figname + '.png', bbox_inches='tight')
-        return 0
-        
-        

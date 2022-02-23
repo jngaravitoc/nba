@@ -165,15 +165,15 @@ def density_aitoff_nn(pos, lbins, bbins, r_shell, n_n, mass, shell_width=5,\
 
     Input:
     ------
-    pos : cartessian positions np.array(3, n) 
-    lbins : number of longitude bins int 
+    pos : cartessian positions np.array(3, n)
+    lbins : number of longitude bins int
     bbins : number of laitude bins int
     r_shell  : Galactocentric distance where the density is compute numpy.float
-    n_n : number of neighboors used to compute the density 
+    n_n : number of neighboors used to compute the density
     mass : particles masses  np.array(n)
     shell_width : width in kpc of the spherical shell where the density is computed
     	default 5 kpc
-     
+
     Returns:
 	density_grid : 2d grid with the densities
 	distances_mean : mean distances used to computed the densities
@@ -185,26 +185,26 @@ def density_aitoff_nn(pos, lbins, bbins, r_shell, n_n, mass, shell_width=5,\
     d_l_rads = np.linspace(lmin, lmax, lbins)
 
     density_grid = np.zeros((lbins-1, bbins-1))
-    
-  
-    
+
+
+
     if galactic == 'True':
         pos_x = pos[:,0] - 8.1
         pos_z = pos[:,2] + 0.027
     else:
         pos_x = pos[:,0]
         pos_z = pos[:,2]
-        
+
     pos_y = pos[:,1]
-    
+
     pos_x = np.random.normal(pos_x, err_p/(3**0.5))
     pos_y = np.random.normal(pos_y, err_p/(3**0.5))
     pos_z = np.random.normal(pos_z, err_p/(3**0.5))
 
     pos = np.array([pos_x, pos_y, pos_z]).T
-    
+
     r = (pos_x**2 + pos_y**2 + pos_z**2)**0.5
-    
+
     r_cut = np.where((r<r_shell+shell_width/2.0) & (r>r_shell-shell_width/2.0))[0]
     pos_cut = pos[r_cut]
     mass_cut = mass[r_cut]
@@ -304,8 +304,8 @@ def lmc_orbit(orbit):
 
     r_lmc = np.sqrt(x**2 + y**2 + z**2)
 
-    
-    
+
+
     pos = np.array([x, y, z]).T
     vel = np.array([vx, vy, vz]).T
 
@@ -336,14 +336,14 @@ def density(r, part_m, part_pos, d):
 def density_grid_kernel(part_m, part_pos, d, grid_res, **kwargs):
     """
     kwargs:
-        box : 
+        box :
     """
 
     if 'box' in kwargs:
         print('here')
         xmin, xmax, ymin, ymax, zmin, zmax = kwargs['box']
         print('Computing density inside a box of xmin = {}, xmax {}'.format(xmin, xmax))
-        
+
     else:
         xmin = min(part_pos[:,0])
         xmax = max(part_pos[:,0])
@@ -360,7 +360,7 @@ def density_grid_kernel(part_m, part_pos, d, grid_res, **kwargs):
     index_cut = np.where((part_pos[:,0]<xmax) & (part_pos[:,0]>xmin) &\
                          (part_pos[:,1]<ymax) & (part_pos[:,1]<ymax) &\
                          (part_pos[:,2]<zmax) & (part_pos[:,2]<zmax))
-    
+
     for i in range(len(x)):
         for j in range(len(y)):
             for k in range(len(z)):
@@ -379,7 +379,7 @@ def density_grid_2d_kernel(part_m, part_pos, d, grid_res):
     y = np.arange(ymin, ymax, grid_res)
 
     rho_grid = np.zeros((len(x), len(y)))
-    
+
     for i in range(len(x)):
         for j in range(len(y)):
             rho_grid[i][j] = density([x[i], y[j]], part_m, part_pos, d)
@@ -399,7 +399,7 @@ def lmc_orbit_cartesian(orbit):
     z = lmc_orbit[:,8]-lmc_orbit[:,2]
 
 
-    return x[:114], y[:114], z[:114] 
+    return x[:114], y[:114], z[:114]
 
 
 def sgr_particles(snap, r_shell, shell_width):
@@ -564,76 +564,8 @@ def density_peaks(dens,  xmin=0, xmax=1, ymin=0, ymax=1, fsize=(10, 4.2), **kwar
     return 0
 
 
-def dens_r(pos, nbins, rmax):
-    """
-    Computes the density in radial bins.
-    """
-    r_p = np.sqrt(pos[:,0]**2 + pos[:,1]**2 + pos[:,2]**2)
-
-    radial_dens = np.zeros(nbins)
-    dr = np.linspace(0, rmax, nbins)
-    #delta_r = dr[2]-dr[1]
 
 
-    for i in range(0, len(dr)-1):
-        index = np.where((r_p < dr[i+1]) & (r_p > dr[i]))[0]
-        V = 4/3 * np.pi * (dr[i+1]**3-dr[i]**3)
-        radial_dens[i] = np.sum(index)/V
-
-    return  radial_dens
-
-def density_octants(pos, vel, nbins, rmax):
-
-    """
-    Computes the velocity dispersion in eight octants in the sky,
-    defined in galactic coordinates as follows:
-
-    octant 1 :
-    octant 2 :
-    octant 3 :
-    octant 4 :
-    octant 5 :
-    octant 6 :
-    octant 7 :
-    octant 8 :
-
-    Parameters:
-    -----------
-
-    Output:
-    -------
-
-
-
-    """
-
-    ## Making the octants cuts:
-
-    # Galactic latitude
-    d_b_rads = np.linspace(-np.pi/2., np.pi/2.,3)
-
-    # Galactic Longitude
-    d_l_rads = np.linspace(-np.pi, np.pi, 5)
-
-    #r_bins = np.linspace(0, 300, 31)
-
-    ## Arrays to store the velocity dispersion profiles
-    rho_octants = np.zeros((nbins, 8))
-
-    ## Octants counter, k=0 is for the radial bins!
-    k = 0
-
-    l, b = pos_cartesian_to_galactic(pos, vel)
-
-    for i in range(len(d_b_rads)-1):
-        for j in range(len(d_l_rads)-1):
-            index = np.where((l<d_l_rads[j+1]) & (l>d_l_rads[j]) &\
-                             (b>d_b_rads[i]) & (b<d_b_rads[i+1]))
-
-            rho_octants[:,k] =  dens_r(pos[index], nbins, rmax)
-            k+=1
-
-    return rho_octants
 
 if __name__ == '__main__':
     #ath = sys.argv[1]
