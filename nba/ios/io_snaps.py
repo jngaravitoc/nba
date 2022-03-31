@@ -3,7 +3,7 @@ from nba.ios.read_snap import load_snapshot as readsnap
 from nba.ios.gadget_reader import is_parttype_in_file
 import nba.com as com
 
-def halo_particles(pids, list_num_particles, gal_index, *args):
+def halo_ids(pids, list_num_particles, gal_index):
     """
     If in an snapshot there are several halos and the particle ids are arranged
     by halos i.e first N ids are of halo 1 second P ids are of halo 2 etc.. Then
@@ -20,7 +20,6 @@ def halo_particles(pids, list_num_particles, gal_index, *args):
 
     gal_index: int
         Index of the needed halo or galaxy.
-    args*:
 
 
     Return
@@ -54,16 +53,10 @@ def halo_particles(pids, list_num_particles, gal_index, *args):
     halo_ids = np.where((pids>=N_cut_min) & (pids<=N_cut_max))[0]
     assert len(halo_ids) == list_num_particles[gal_index], 'Something went wrong selecting the satellite particles'
 
-    results = []
-
-    results.append(pids[halo_ids])
-    for arg in args:
-        results.append(arg[halo_ids])
-
-    return results
+    return halo_ids
 
 
-def read_snap_coordinates(path, snap, N_halo_part, com_frame=0, galaxy=0,
+def read_snap_coordinates(path, snap, N_halo_part, q, com_frame=0, galaxy=0,
                           snapformat=3, com_method='shrinking'):
     """
     Returns the halo properties.
@@ -77,10 +70,12 @@ def read_snap_coordinates(path, snap, N_halo_part, com_frame=0, galaxy=0,
         A list with the number of particles of all the galaxies in the ids.
         [1500, 200, 50] would mean that the first halo have 1500 particles, the
         second halo 200, and the third and last halo 50 particles.
+    q : list
+        Particles properties: ['pos', 'vel', 'pot', 'mass'] etc.. IDs are necessay and loaded by default.
     com_frame : int
-        In which halo the coordinates will be centered 1 -> halo 1, 2 -> halo 2 etc..
+        In which halo the coordinates will be centered 0 -> halo 1, 1 -> halo 2 etc..
     galaxy : int
-        Halo particle data to return  1 -> halo 1, 2 -> halo 2 etc...
+        Halo particle data to return  0 -> halo 1, 1 -> halo 2 etc...
     snapformat: int
         0 -> Gadget binnary, 2 -> ASCII, 3 -> Gadget HDF5
     com_method : str
@@ -93,20 +88,31 @@ def read_snap_coordinates(path, snap, N_halo_part, com_frame=0, galaxy=0,
     pot : numpy.array
     mass : numpy.array
 
+    TODO: Leave vel and mass as args when computing COM.
+
     """
     # Load data
     print("Loading snapshot: " + path + snap)
-    all_pos = readsnap(path+snap, snapformat, 'pos', 'dm')
-    all_vel = readsnap(path+snap, snapformat, 'vel', 'dm')
+    # TBD: Define more of quantities, such as acceleration etc.. unify this beter with ios
+
     all_ids = readsnap(path+snap, snapformat, 'pid', 'dm')
-    all_pot = readsnap(path+snap, snapformat, 'pot', 'dm')
-    all_mass = readsnap(path+snap, snapformat, 'mass', 'dm')
+    ids = halo_ids(all_ids, N_halo_part, galaxy)
+
+    if 'pos' in q:
+        all_pos = readsnap(path+snap, snapformat, 'pos', 'dm')
+        pos = all_pos[ids]
+    if 'vel' in q:
+        all_vel = readsnap(path+snap, snapformat, 'vel', 'dm')
+        vel = all_vel[ids]
+    if 'pot' in q:
+        all_pot = readsnap(path+snap, snapformat, 'pot', 'dm')
+        pot = all_pot[ids]
+    if 'mass' in q:
+        all_mass = readsnap(path+snap, snapformat, 'mass', 'dm')
+        mass = all_mass[ids]
 
     #if galaxy == 1:
     print("Loading halo {} particle data".format(galaxy))
-
-    ids, pos, vel, pot, mass = halo_particles(all_ids, N_halo_part, galaxy,
-                                                  all_pos, all_vel, all_pot, all_mass)
 
     print("Computing coordinates in halo {} reference frame".format(com_frame))
 
@@ -116,10 +122,9 @@ def read_snap_coordinates(path, snap, N_halo_part, com_frame=0, galaxy=0,
         new_vel = com.re_center(vel, vel_com)
 
     else:
-        ids_rf, pos_rf, vel_rf, pot_rf, mass_rf = halo_particles(all_ids, N_halo_part, com_frame,
-                                                                     all_pos, all_vel, all_pot, all_mass)
+        ids_rf = halo_ids(all_ids, N_halo_part, com_frame)
 
-        pos_com, vel_com = com.get_com(pos_rf, vel_rf, mass_rf, com_method)
+        pos_com, vel_com = com.get_com(all_pos[ids_rf], all_vell[ids_rf], all_mass[ids_rf], com_method)
         new_pos = com.re_center(pos, pos_com)
         new_vel = vel.re_center(vel, vel_com)
 

@@ -1,35 +1,46 @@
 import numpy as np
 import sys
+from nba.ios.read_snap import load_snapshot
 
-from read_snap import load_snapshot
-import shrinking_sphere as ssphere
 
-# Define variables 
-# including the path of the snapshot
-snapshot = sys.argv[1]
-out_name = sys.argv[2]
-init_snap = int(sys.argv[3])
-final_snap = int(sys.argv[4])
+def orbit(snapname, ninit, nfinal, com_frame, galaxy, snapformat, com_method):
+    """
+    Computes the COM for a sequence of snapshots. 
 
-snap_format = 3 # gadget4 - hdf5
-halo_com = np.zeros((final_snap-init_snap+1, 3))
-halo_vcom = np.zeros((final_snap-init_snap+1, 3))
-halo_in_com = np.zeros((final_snap-init_snap+1, 3))
-halo_in_vcom = np.zeros((final_snap-init_snap+1, 3))
+    """
+    pos_com = np.zeros((nfinal-ninit+1, 3))
+    vel_com = np.zeros((nfinal-ninit+1, 3))
 
-# Load snaphot
-for k in range(init_snap, final_snap+1):
-	print('loading snapshot \n')
-	pos, vel, mass = load_snapshot(snapshot+"_{:03d}.hdf5".format(k), snap_format)
-	# Compute COM
-	print('computing COM \n')
-	halo_com[k], halo_vcom[k] = ssphere.com(pos, vel, mass)
-	print('computing COM with shrinkins sphere method \n')
-	halo_in_com[k], halo_in_vcom[k] = ssphere.shrinking_sphere(pos, vel, mass, r_init=300)
-	print('Done computing COM \n')
-# Save data
-np.savetxt(out_name, np.array([halo_com[:,0], halo_com[:,1], halo_com[:,2],
-							   halo_vcom[:,0], halo_vcom[:,1], halo_vcom[:,2],
-							   halo_in_com[:,0], halo_in_com[:,1], halo_in_com[:,2],
-                               halo_in_vcom[:,0],halo_in_vcom[:,1], halo_in_com[:,2]]).T)
+    for k in range(ninit, nfinal+1):
+        all_ids = load_snapshot(snapname, snapformat, 'pid', 'dm')
+        ids = halo_ids(all_ids, N_halo_part, galaxy)
+        all_pos = load_snapshot(snapname, snapformat, 'pos', 'dm')
+        all_vel = load_snapshot(snapname, snapformat, 'vel', 'dm')
+        all_mass = load_snapshot(snapname, snapformat, 'mass', 'dm')
+        pos = all_pos[ids]
+        vel = all_vel[ids]
+        mass = all_mass[ids]
+        pos_com[k], vel_com[k] = com.get_com(pos, vel, mass, com_method)
+
+    return pos_com, vel_com
+
+if __name__ == '__main__':
+
+    # Define variables 
+    # including the path of the snapshot
+    snapshot = sys.argv[1]
+    out_name = sys.argv[2]
+    init_snap = int(sys.argv[3])
+    final_snap = int(sys.argv[4])
+    snap_format = 3 # gadget4 - hdf5
+    com_method1 = 'shrinking'
+    com_method2 = 'diskpot'
+    pos_com_host, vel_com_host = orbit(snapshot, init_snap, final_snap, 0, 0, snap_format, com_method2)
+    pos_com_sat, vel_com_sat = orbit(snapshot, init_snap, final_snap, 1, 1, snap_format, com_method1)
+    
+    # Save data
+    np.savetxt(out_name, np.array([pos_com_host[:,0], pos_com_host[:,1], pos_com_host[:,2],
+				   vel_com_host[:,0], vel_com_host[:,1], vel_com_host[:,2],
+                            	   pos_com_sat[:,0], pos_com_sat[:,1], pos_com_sat[:,2],
+                                   vel_com_sat[:,0], vel_com_sat[:,1], vel_com_sat[:,2]]).T)
 
