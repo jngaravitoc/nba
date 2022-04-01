@@ -28,43 +28,43 @@ def load_snapshot(snapname, snapformat, quantity, ptype):
        
     """
 
-	if snapformat == 1:
-		q = readsnap(snapname, quantity, ptype)
+    if snapformat == 1:
+        q = readsnap(snapname, quantity, ptype)
 
-	elif snapformat == 3:
-		if quantity == 'pos':
-			q = 'Coordinates'
+    elif snapformat == 3:
+        if quantity == 'pos':
+            q = 'Coordinates'
 				
-		elif quantity == 'vel':
-			q = 'Velocities'
+        elif quantity == 'vel':
+            q = 'Velocities'
 	
-		elif quantity == 'mass':
-			q = 'Masses'
+        elif quantity == 'mass':
+            q = 'Masses'
 				
-		elif quantity == 'pot':
-			q = 'Potential'
+        elif quantity == 'pot':
+            q = 'Potential'
 				
-		elif quantity == 'pid':
-			q = 'ParticleIDs'
+        elif quantity == 'pid':
+            q = 'ParticleIDs'
 
-		elif quantity == 'acc':
-			q = 'Acceleration'
+        elif quantity == 'acc':
+            q = 'Acceleration'
 				
-		if ptype == "dm":
-			ptype =	'PartType1'			
-		if ptype == "disk":
-			ptype =	'PartType2'			
-		if ptype == "bulge":
-			ptype =	'PartType3'
+        if ptype == "dm":
+            ptype =	'PartType1'			
+        if ptype == "disk":
+            ptype =	'PartType2'			
+        if ptype == "bulge":
+            ptype =	'PartType3'
 			
-		q = read_snap(snapname+".hdf5", ptype, q)
-		#a = read_snap(snapname, 'PartType1', 'Acceleration')
-		#potential = read_snap(snapname, 'PartType1', 'Potential')
-		#print(mass[0], a[0], potential[0])
-	else : 
-		print('Wrong snapshot format: (1) Gadget2/3, (2) ASCII, (3) Gadget4 (HDF5)')
-		sys.exit()
-	return np.ascontiguousarray(q)
+        q = read_snap(snapname+".hdf5", ptype, q)
+        #a = read_snap(snapname, 'PartType1', 'Acceleration')
+        #potential = read_snap(snapname, 'PartType1', 'Potential')
+        #print(mass[0], a[0], potential[0])
+    else : 
+        print('Wrong snapshot format: (1) Gadget2/3, (2) ASCII, (3) Gadget4 (HDF5)')
+        sys.exit()
+    return np.ascontiguousarray(q)
 
 def halo_ids(pids, list_num_particles, gal_index):
     """
@@ -117,6 +117,53 @@ def halo_ids(pids, list_num_particles, gal_index):
     assert len(halo_ids) == list_num_particles[gal_index], 'Something went wrong selecting the satellite particles'
 
     return halo_ids
+
+
+
+def get_com(pos, vel, mass, method, snapname=0, snapformat=0):
+    """
+    Function that computes the COM using a chosen method
+
+    Parameters
+    ----------
+    pos: numpy.array
+        cartesian coordinates with shape (n,3)
+    vel: numpy.array
+        cartesian velocities with shape (n,3)
+    mass: numpy.array
+        Particle masse
+    method: str
+        shrinking: Using the shrinking sphere algorithm
+        diskpot: Using the minimum of the disk Potential
+        mean_por: Using the mean positions of the particle distribution
+
+    Returns
+    --------
+    pos_com: numpy.array
+        With coordinates of the COM.
+    vel_com: numpy.array
+        With the velocity of the COM.
+
+    """
+    if method == 'shrinking':
+        pos_com, vel_com = com.shrinking_sphere(pos, vel, mass)
+
+    elif method == 'diskpot':
+        # TODO : Make this function generic to sims with multiple disks!
+        #disk_particles = is_parttype_in_file(path+snap+".hdf5", 'PartType2')
+        #assert disk_particles == True, "Error no disk particles found in snapshot"
+
+        pos_disk = load_snapshot(snapname, snapformat, 'pos', 'disk')
+        vel_disk = load_snapshot(snapname, snapformat, 'vel', 'disk')
+        pot_disk = load_snapshot(snapname, snapformat, 'pot', 'disk')
+        pos_com, vel_com = com.com_disk_potential(pos_disk, vel_disk, pot_disk)
+        del pos_disk, vel_disk, pot_disk
+
+    elif method == 'mean_pos':
+        pos_com, vel_com = com.mean_pos(pos, vel, mass)
+
+    return pos_com, vel_com
+
 
 
 def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
@@ -178,14 +225,14 @@ def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
     print("Computing coordinates in halo {} reference frame".format(com_frame))
 
     if com_frame == galaxy:
-        pos_com, vel_com = com.get_com(pos, vel, mass, com_method, snapname=snap, snapformat=snapformat)
+        pos_com, vel_com = get_com(pos, vel, mass, com_method, snapname=snap, snapformat=snapformat)
         new_pos = com.re_center(pos, pos_com)
         new_vel = com.re_center(vel, vel_com)
 
     else:
         ids_rf = halo_ids(all_ids, N_halo_part, com_frame)
 
-        pos_com, vel_com = com.get_com(all_pos[ids_rf], all_vell[ids_rf], all_mass[ids_rf], com_method)
+        pos_com, vel_com = get_com(all_pos[ids_rf], all_vell[ids_rf], all_mass[ids_rf], com_method)
         new_pos = com.re_center(pos, pos_com)
         new_vel = vel.re_center(vel, vel_com)
 
