@@ -56,8 +56,8 @@ def halo_ids(pids, list_num_particles, gal_index):
     return halo_ids
 
 
-def read_snap_coordinates(path, snap, N_halo_part, q, com_frame=0, galaxy=0,
-                          snapformat=3, com_method='shrinking'):
+def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
+              snapformat=3, com_method='shrinking'):
     """
     Returns the halo properties.
 
@@ -92,23 +92,21 @@ def read_snap_coordinates(path, snap, N_halo_part, q, com_frame=0, galaxy=0,
 
     """
     # Load data
-    print("Loading snapshot: " + path + snap)
+    print("Loading snapshot: " + snap)
     # TBD: Define more of quantities, such as acceleration etc.. unify this beter with ios
 
-    all_ids = readsnap(path+snap, snapformat, 'pid', 'dm')
+    all_ids = readsnap(snap, snapformat, 'pid', 'dm')
     ids = halo_ids(all_ids, N_halo_part, galaxy)
 
-    if 'pos' in q:
-        all_pos = readsnap(path+snap, snapformat, 'pos', 'dm')
-        pos = all_pos[ids]
-    if 'vel' in q:
-        all_vel = readsnap(path+snap, snapformat, 'vel', 'dm')
-        vel = all_vel[ids]
+    all_pos = readsnap(snap, snapformat, 'pos', 'dm')
+    pos = all_pos[ids]
+    all_vel = readsnap(snap, snapformat, 'vel', 'dm')
+    vel = all_vel[ids]
     if 'pot' in q:
-        all_pot = readsnap(path+snap, snapformat, 'pot', 'dm')
+        all_pot = readsnap(snap, snapformat, 'pot', 'dm')
         pot = all_pot[ids]
     if 'mass' in q:
-        all_mass = readsnap(path+snap, snapformat, 'mass', 'dm')
+        all_mass = readsnap(snap, snapformat, 'mass', 'dm')
         mass = all_mass[ids]
 
     #if galaxy == 1:
@@ -117,7 +115,7 @@ def read_snap_coordinates(path, snap, N_halo_part, q, com_frame=0, galaxy=0,
     print("Computing coordinates in halo {} reference frame".format(com_frame))
 
     if com_frame == galaxy:
-        pos_com, vel_com = com.get_com(pos, vel, mass, com_method)
+        pos_com, vel_com = com.get_com(pos, vel, mass, com_method, snapname=snap, snapformat=snapformat)
         new_pos = com.re_center(pos, pos_com)
         new_vel = com.re_center(vel, vel_com)
 
@@ -130,4 +128,4 @@ def read_snap_coordinates(path, snap, N_halo_part, q, com_frame=0, galaxy=0,
 
     del(pos, vel)
 
-    return new_pos, new_vel, pot, mass, ids, pos_com, vel_com
+    return new_pos, new_vel#, pot, mass, ids, pos_com, vel_com

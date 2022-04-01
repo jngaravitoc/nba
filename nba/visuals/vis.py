@@ -11,7 +11,7 @@ class Visuals:
 
     """
     def __init__(self):
-        return 0 		
+        x=3 		
 
     #def quiver_plot(self, **kwargs):
     #	return 0
@@ -151,14 +151,14 @@ class Visuals:
         twd_map = hp.mollview(map_smooth, rot=180, return_projected_map=True)
         return twd_map
 
-    def particle_slice(self, pos, grid_size):
+    def particle_slice(self, pos, nbins, norm, grid_size):
         """
         Compute a density slice 
 
         """
-        hbxy = histogram2d(pos[:,0], pos[:,1], bins=nbins, normed=norm)
-        hbxz = histogram2d(pos[:,0], pos[:,2], bins=nbins, normed=norm)
-        hbyz = histogram2d(pos[:,1], pos[:,2], bins=nbins, normed=norm)
+        hbxy = np.histogram2d(pos[:,0], pos[:,1], bins=nbins, normed=norm)
+        hbxz = np.histogram2d(pos[:,0], pos[:,2], bins=nbins, normed=norm)
+        hbyz = np.histogram2d(pos[:,1], pos[:,2], bins=nbins, normed=norm)
 
         fig, ax = plt.subplots(1, 3, figsize=(10, 4))
         im1= ax[0].imshow(hbxy[0], extent=[np.min(hbxy[1]), np.max(hbxy[1]), np.min(hbxy[2]), np.max(hbxy[2])], cmap='magma_r', aspect='auto')
