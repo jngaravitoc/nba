@@ -25,7 +25,6 @@ def read_snap(snap_name, partType, properties):
 	print("Loading '{}' of particles types '{}' from snapshot: '{}'".format(properties, partType, snap_name))
 	particles = f[partType]
 	part_prop = particles.get(properties)
-	print(particles.keys())
 	return part_prop
 
 

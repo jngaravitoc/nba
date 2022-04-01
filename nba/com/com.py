@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from pygadgetreader import *
-
+from nba.ios.gadget_reader import is_parttype_in_file
+from nba.ios.read_snap import load_snapshot
 #Function that computes the center of mass for the halo and disk and
 # the corresponsing orbits for the host and satellite simultaneously
 
@@ -175,7 +175,7 @@ def shrinking_sphere(xyz, vxyz, m, delta=0.025):
     return np.array([xCM_new, yCM_new, zCM_new]), np.array([vxCM_new, vyCM_new, vzCM_new])
 
 
-def get_com(pos, vel, mass, method):
+def get_com(pos, vel, mass, method, snapname=0, snapformat=0):
     """
     Function that computes the COM using a chosen method
 
@@ -205,12 +205,12 @@ def get_com(pos, vel, mass, method):
 
     elif method == 'diskpot':
         # TODO : Make this function generic to sims with multiple disks!
-        disk_particles = is_parttype_in_file(path+snap+".hdf5", 'PartType2')
-        assert disk_particles == True, "Error no disk particles found in snapshot"
+        #disk_particles = is_parttype_in_file(path+snap+".hdf5", 'PartType2')
+        #assert disk_particles == True, "Error no disk particles found in snapshot"
 
-        pos_disk = readsnap(path+snap, snapformat,  'pos', 'disk')
-        vel_disk = readsnap(path+snap, snapformat,  'vel', 'disk')
-        pot_disk = readsnap(path+snap, snapformat, 'pot', 'disk')
+        pos_disk = load_snapshot(snapname, snapformat, 'pos', 'disk')
+        vel_disk = load_snapshot(snapname, snapformat, 'vel', 'disk')
+        pot_disk = load_snapshot(snapname, snapformat, 'pot', 'disk')
         pos_com, vel_com = com_disk_potential(pos_disk, vel_disk, pot_disk)
         del pos_disk, vel_disk, pot_disk
 
