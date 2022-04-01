@@ -30,14 +30,16 @@ the orbit of two halos can be [found here](https://github.com/jngaravitoc/nba/bl
 At the moment the code has modules to perform the following analysis: 
 - Center of mass computations
 - Orbit calculations
-- Density estimation
-- Compute halo shapes
-- Kinematics properties such as: anisotropy paramter, velocity dispersion
-- Basic visualization
+- Density estimation 
+- Compute halo shapes and angular momentum. 
+- Kinematics properties such as: anisotropy parameter, velocity dispersion, and orbital poles.
+- Coordinate transformations using [astropy](https://github.com/astropy/astropy).
+- Basic visualization in cartessian and mollweide projections. 
 
 ## Dependencies:
 
 - scipy
 - matplotlib
 - astropy
+- pygadgetreader 
 - healpy (visualization)
