@@ -24,7 +24,18 @@ output can easily be implemented in `nba/ios/`
 Many of the rotines in NBA can easily be paralellized with python packages such as [Schwimmbad](https://schwimmbad.readthedocs.io/en/latest/index.html). An example showing how to compute
 the orbit of two halos can be [found here](https://github.com/jngaravitoc/nba/blob/main/tutorials/compute_orbit_parallel.py). 
 
-## Dependencies :
+
+## Routines:
+
+At the moment the code has modules to perform the following analysis: 
+- Center of mass computations
+- Orbit calculations
+- Density estimation
+- Compute halo shapes
+- Kinematics properties such as: anisotropy paramter, velocity dispersion
+- Basic visualization
+
+## Dependencies:
 
 - scipy
 - matplotlib
