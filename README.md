@@ -9,7 +9,7 @@ nba can be installed by clonning the repository and installing it locally:
 
 ```
 $ git clone https://github.com/jngaravitoc/nba.git`
-$ cd nba/`
+$ cd nba/
 $ python -m pip install .
 ```
 
