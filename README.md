@@ -21,7 +21,7 @@ output can easily be implemented in `nba/ios/`
 
 ## Paralellization:
 
-Many of the rotines in NBA can easily be paralellized with python packages such as (Schwimmbad)[https://schwimmbad.readthedocs.io/en/latest/index.html]. An example showing how to compute
+Many of the rotines in NBA can easily be paralellized with python packages such as [Schwimmbad](https://schwimmbad.readthedocs.io/en/latest/index.html). An example showing how to compute
 the orbit of two halos can be [found here](https://github.com/jngaravitoc/nba/blob/main/tutorials/compute_orbit_parallel.py). 
 
 ## Dependencies :
