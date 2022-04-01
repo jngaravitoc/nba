@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 import healpy as hp
 import sys
 
@@ -151,7 +152,7 @@ class Visuals:
         twd_map = hp.mollview(map_smooth, rot=180, return_projected_map=True)
         return twd_map
 
-    def particle_slice(self, pos, nbins, norm, grid_size):
+    def particle_slice(self, pos, nbins, norm, grid_size, cmap='magma'):
         """
         Compute a density slice 
 
@@ -160,10 +161,10 @@ class Visuals:
         hbxz = np.histogram2d(pos[:,0], pos[:,2], bins=nbins, normed=norm)
         hbyz = np.histogram2d(pos[:,1], pos[:,2], bins=nbins, normed=norm)
 
-        fig, ax = plt.subplots(1, 3, figsize=(10, 4))
-        im1= ax[0].imshow(hbxy[0], extent=[np.min(hbxy[1]), np.max(hbxy[1]), np.min(hbxy[2]), np.max(hbxy[2])], cmap='magma_r', aspect='auto')
-        im2 = ax[1].imshow(hbxz[0], extent=[np.min(hbxz[1]), np.max(hbxz[1]), np.min(hbxz[2]), np.max(hbxz[2])], cmap='magma_r', aspect='auto')
-        im3 = ax[2].imshow(hbyz[0], extent=[np.min(hbyz[1]), np.max(hbyz[1]), np.min(hbyz[2]), np.max(hbyz[2])],  cmap='magma_r', aspect='auto', vmin=np.min(hbyz[0]), vmax=np.max(hbyz[0]))
+        fig, ax = plt.subplots(1, 3, figsize=(12, 4))
+        im1= ax[0].imshow(hbxy[0].T, norm=LogNorm(), origin='lower', extent=grid_size, cmap=cmap, aspect='auto')
+        im2 = ax[1].imshow(hbxz[0].T, norm=LogNorm(), origin='lower', extent=grid_size, cmap=cmap, aspect='auto')
+        im3 = ax[2].imshow(hbyz[0].T, norm=LogNorm(), origin='lower', extent=grid_size,  cmap=cmap, aspect='auto')
         fig.colorbar(im1, ax=ax[0], orientation='horizontal')
         fig.colorbar(im2, ax=ax[1], orientation='horizontal')
         fig.colorbar(im3, ax=ax[2], orientation='horizontal')
