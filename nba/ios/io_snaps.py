@@ -1,7 +1,70 @@
 import numpy as np
-from nba.ios.read_snap import load_snapshot as readsnap
-from nba.ios.gadget_reader import is_parttype_in_file
+from nba.ios.gadget_reader import is_parttype_in_file, read_snap
+from pygadgetreader import readsnap
 import nba.com as com
+
+def load_snapshot(snapname, snapformat, quantity, ptype):
+    """
+    Load all the particle data of a specific dtype and the required quantity. 
+    Readers from other codes need to be implemented here. At the moment the NBA
+    supports Gadget2/3/4 and ASCII format. 
+
+    Paramters:
+    ----------
+
+    snapname: str
+        Path and snashot name
+    snapformat: str
+        Format of the simulations (1) Gadget2/3, (2) ASCII, (3) Gadget4 - HDF5
+    quantity: str
+        Particle propery: pos, vel, mass, pid
+    ptype: str
+        Particle type: dm, disk, bulge
+
+    Returns:
+    --------
+    q : numpy.array
+        Particle data for the specified quantity and ptype
+       
+    """
+
+	if snapformat == 1:
+		q = readsnap(snapname, quantity, ptype)
+
+	elif snapformat == 3:
+		if quantity == 'pos':
+			q = 'Coordinates'
+				
+		elif quantity == 'vel':
+			q = 'Velocities'
+	
+		elif quantity == 'mass':
+			q = 'Masses'
+				
+		elif quantity == 'pot':
+			q = 'Potential'
+				
+		elif quantity == 'pid':
+			q = 'ParticleIDs'
+
+		elif quantity == 'acc':
+			q = 'Acceleration'
+				
+		if ptype == "dm":
+			ptype =	'PartType1'			
+		if ptype == "disk":
+			ptype =	'PartType2'			
+		if ptype == "bulge":
+			ptype =	'PartType3'
+			
+		q = read_snap(snapname+".hdf5", ptype, q)
+		#a = read_snap(snapname, 'PartType1', 'Acceleration')
+		#potential = read_snap(snapname, 'PartType1', 'Potential')
+		#print(mass[0], a[0], potential[0])
+	else : 
+		print('Wrong snapshot format: (1) Gadget2/3, (2) ASCII, (3) Gadget4 (HDF5)')
+		sys.exit()
+	return np.ascontiguousarray(q)
 
 def halo_ids(pids, list_num_particles, gal_index):
     """
@@ -95,18 +158,18 @@ def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
     print("Loading snapshot: " + snap)
     # TBD: Define more of quantities, such as acceleration etc.. unify this beter with ios
 
-    all_ids = readsnap(snap, snapformat, 'pid', 'dm')
+    all_ids = load_snapshot(snap, snapformat, 'pid', 'dm')
     ids = halo_ids(all_ids, N_halo_part, galaxy)
 
-    all_pos = readsnap(snap, snapformat, 'pos', 'dm')
+    all_pos = load_snapshot(snap, snapformat, 'pos', 'dm')
     pos = all_pos[ids]
-    all_vel = readsnap(snap, snapformat, 'vel', 'dm')
+    all_vel = load_snapshot(snap, snapformat, 'vel', 'dm')
     vel = all_vel[ids]
     if 'pot' in q:
-        all_pot = readsnap(snap, snapformat, 'pot', 'dm')
+        all_pot = load_snapshot(snap, snapformat, 'pot', 'dm')
         pot = all_pot[ids]
     if 'mass' in q:
-        all_mass = readsnap(snap, snapformat, 'mass', 'dm')
+        all_mass = load_snapshot(snap, snapformat, 'mass', 'dm')
         mass = all_mass[ids]
 
     #if galaxy == 1:
