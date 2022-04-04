@@ -1,8 +1,7 @@
 import numpy as np
 import sys
-from nba.ios.read_snap import load_snapshot
-from nba.ios.io_snaps import halo_ids
-from nba.com import get_com
+from nba.ios.io_snaps import halo_ids, load_snapshot
+from nba.ios import get_com
 
 def orbit(snapname, ninit, nfinal, com_frame, galaxy, N_halo_part, snapformat, com_method):
     """

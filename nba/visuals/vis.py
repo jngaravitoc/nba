@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import healpy as hp
-import sys
+from healpy.newvisufunc import projview, newprojplot
+
 
 
 class Visuals:
@@ -130,7 +131,7 @@ class Visuals:
 
 
 
-    def mollweide_projection(self, l, b, nside, smooth=5):
+    def compute_mollweide(self, l, b, nside, smooth=5):
         """
         Makes mollweide plot using healpix
         Parameters:
@@ -150,7 +151,20 @@ class Visuals:
         hpx_map[idx] = counts/degsq
         map_smooth = hp.smoothing(hpx_map, fwhm=smooth*np.pi/180)
         twd_map = hp.mollview(map_smooth, rot=180, return_projected_map=True)
-        return twd_map
+        return twd_map, hpx_map
+
+
+    def plot_mollweide_galactic(self, twd_map, rotation, bmin, bmax, figname, fig_title):
+        projview(twd_map, coord=["G"], graticule=True, graticule_labels=True,
+                rot=rotation, unit=" ",  xlabel="Galactic Longitude (l) ", 
+                ylabel="Galactic Latitude (b)", cb_orientation="horizontal", min=bmin, max=bmax, 
+                latitude_grid_spacing=45, projection_type="mollweide", title=fig_title)
+ 
+        #newprojplot(theta=np.radians(90-(b2[0])), phi=np.radians(l2[0]-120), marker="*", color="r", markersize=5 )
+        plt.savefig(figname, bbox_inches='tight')
+        plt.close()
+        return 0
+
 
     def particle_slice(self, pos, nbins, norm, grid_size, cmap='magma'):
         """
@@ -161,10 +175,15 @@ class Visuals:
         hbxz = np.histogram2d(pos[:,0], pos[:,2], bins=nbins, normed=norm)
         hbyz = np.histogram2d(pos[:,1], pos[:,2], bins=nbins, normed=norm)
 
+        extent1 = [np.min(hbxy[1]), np.max(hbxy[1]), np.min(hbxy[2]), np.max(hbxy[2])]
+        extent2 = [np.min(hbxz[1]), np.max(hbxz[1]), np.min(hbxz[2]), np.max(hbxz[2])]
+        extent3 = [np.min(hbyz[1]), np.max(hbyz[1]), np.min(hbyz[2]), np.max(hbyz[2])]
+
         fig, ax = plt.subplots(1, 3, figsize=(12, 4))
-        im1= ax[0].imshow(hbxy[0].T, norm=LogNorm(), origin='lower', extent=grid_size, cmap=cmap, aspect='auto')
-        im2 = ax[1].imshow(hbxz[0].T, norm=LogNorm(), origin='lower', extent=grid_size, cmap=cmap, aspect='auto')
-        im3 = ax[2].imshow(hbyz[0].T, norm=LogNorm(), origin='lower', extent=grid_size,  cmap=cmap, aspect='auto')
+        im1= ax[0].imshow(hbxy[0].T, norm=LogNorm(), origin='lower', extent=extent1, cmap=cmap, aspect='equal')
+        im2 = ax[1].imshow(hbxz[0].T, norm=LogNorm(), origin='lower', extent=extent2, cmap=cmap, aspect='equal')
+        im3 = ax[2].imshow(hbyz[0].T, norm=LogNorm(), origin='lower', extent=extent3,  cmap=cmap, aspect='equal')
+        
         fig.colorbar(im1, ax=ax[0], orientation='horizontal')
         fig.colorbar(im2, ax=ax[1], orientation='horizontal')
         fig.colorbar(im3, ax=ax[2], orientation='horizontal')
@@ -175,7 +194,12 @@ class Visuals:
         ax[1].set_ylabel('z[kpc]')
         ax[2].set_xlabel('y[kpc]')
         ax[2].set_ylabel('z[kpc]')
-    
+        ax[0].set_xlim(grid_size[0], grid_size[1]) 
+        ax[0].set_ylim(grid_size[2], grid_size[3]) 
+        ax[1].set_xlim(grid_size[0], grid_size[1]) 
+        ax[1].set_ylim(grid_size[4], grid_size[5]) 
+        ax[2].set_xlim(grid_size[2], grid_size[3]) 
+        ax[2].set_ylim(grid_size[4], grid_size[5]) 
         return fig
 
     def animate(self, snapshot, snap_format, init, final, fig_name=0, npart=10000):
@@ -184,18 +208,3 @@ class Visuals:
             scatter(pos, npart, figure_name=fig_name+"{:03d}.png".format(k))
         return 0
 
-
-if __name__ == "__main__":
-    # Define variables
-    # including the path of the snapshot
-    snapshot = sys.argv[1]
-    out_name = sys.argv[2]
-    init_snap = 0 #t(sys.argv[3])
-    final_snap = 20 #int(sys.argv[4])
-    snap_format = 3 # gadget4 - hdf5
-    npart = 100000
-    n_snaps = final_snap - init_snap
-    animate(snapshot, snap_format, init_snap, final_snap, fig_name=out_name, npart=npart)
-    #s, vel, mass = load_snapshot(snapshot, snap_format, init_snap, final_snap, out_name, npart)
-    #catter(pos, npart, figure_name=fig_name+"{:03d}.png".format(k))
-    #animate(pos, npart)
