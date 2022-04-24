@@ -53,17 +53,17 @@ class Kinematics:
         b : numpy.array([]) in radians
 
         """
-        ## transforming to galactic coordinates.
+        ## transforming to galactocentric coordinates.
 
-        c_gal = SkyCoord(self.pos, representation='cartesian', frame='galactic')
-        c_gal.representation = 'spherical'
+        c_gal = SkyCoord(self.pos, representation_type='cartesian', frame='galactic')
 
         ## to degrees and wrapping l
 
-        l_degrees = c_gal.l.wrap_at(180 * u.deg).radian
-        b_degrees = c_gal.b.radian
+        lon_radians = c_gal.spherical.lon.wrap_at(180 * u.deg).radian
+        lat_radians = c_gal.spherical.lat.radian
 
-        return l_degrees, b_degrees
+
+        return lon_radians, lat_radians
 
     def galactic_coordinates_center(self):
         """
