@@ -15,11 +15,13 @@ class Structure:
     def __init__(self, pos, mass):
         self.pos = pos
         self.mass = mass
+        assert np.shape(self.pos)[1] == 3, "Positions array dimension it's not 3. positions arrays needs to be of shape (npart, 3) !"
 
     def density_profile(self, nbins, rmin, rmax):
         """
         Computes the number density radial profile. Assuming all the partiles have the same mass.
         """
+       
         r_p = np.sqrt(np.sum(self.pos**2, axis=1))
         dens_profile = np.zeros(nbins-1)
         dr = np.linspace(rmin, rmax, nbins)

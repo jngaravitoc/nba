@@ -25,6 +25,9 @@ def load_snapshot(snapname, snapformat, quantity, ptype):
     --------
     q : numpy.array
         Particle data for the specified quantity and ptype
+
+    # TODO:
+    Return header and return available keys in ValueError.
        
     """
 
@@ -49,7 +52,9 @@ def load_snapshot(snapname, snapformat, quantity, ptype):
 
         elif quantity == 'acc':
             q = 'Acceleration'
-				
+        else:
+            ValueError("* desired quantity is not available, try: ['pos', 'vel', 'mass', 'pot', 'pid', 'acc'] ")
+        			
         if ptype == "dm":
             ptype =	'PartType1'			
         if ptype == "disk":
@@ -58,11 +63,8 @@ def load_snapshot(snapname, snapformat, quantity, ptype):
             ptype =	'PartType3'
 			
         q = read_snap(snapname+".hdf5", ptype, q)
-        #a = read_snap(snapname, 'PartType1', 'Acceleration')
-        #potential = read_snap(snapname, 'PartType1', 'Potential')
-        #print(mass[0], a[0], potential[0])
     else : 
-        print('Wrong snapshot format: (1) Gadget2/3, (2) ASCII, (3) Gadget4 (HDF5)')
+        print('** Wrong snapshot format: (1) Gadget2/3, (2) ASCII, (3) Gadget4 (HDF5)')
         sys.exit()
     return np.ascontiguousarray(q)
 
@@ -202,40 +204,44 @@ def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
 
     """
     # Load data
-    print("Loading snapshot: " + snap)
+    print("* Loading snapshot: {} ".format(snap))
     # TBD: Define more of quantities, such as acceleration etc.. unify this beter with ios
 
     all_ids = load_snapshot(snap, snapformat, 'pid', 'dm')
     ids = halo_ids(all_ids, N_halo_part, galaxy)
 
-    all_pos = load_snapshot(snap, snapformat, 'pos', 'dm')
-    pos = all_pos[ids]
-    all_vel = load_snapshot(snap, snapformat, 'vel', 'dm')
-    vel = all_vel[ids]
-    if 'pot' in q:
-        all_pot = load_snapshot(snap, snapformat, 'pot', 'dm')
-        pot = all_pot[ids]
-    if 'mass' in q:
-        all_mass = load_snapshot(snap, snapformat, 'mass', 'dm')
-        mass = all_mass[ids]
+    halo_properties = dict([
+                            ('ids', ids)]
+    )
+    
+    
+    for quantity in q:
+        qall = load_snapshot(snap, snapformat, quantity, 'dm')
+        halo_properties[quantity] = qall[ids]
 
+        
     #if galaxy == 1:
-    print("Loading halo {} particle data".format(galaxy))
+    print("* Loading halo {} particle data".format(galaxy))
 
-    print("Computing coordinates in halo {} reference frame".format(com_frame))
+    print("* Computing coordinates in halo {} reference frame".format(com_frame))
 
     if com_frame == galaxy:
-        pos_com, vel_com = get_com(pos, vel, mass, com_method, snapname=snap, snapformat=snapformat)
-        new_pos = com.re_center(pos, pos_com)
-        new_vel = com.re_center(vel, vel_com)
+        pos_com, vel_com = get_com(halo_properties['pos'], halo_properties['vel'], halo_properties['mass'], com_method, snapname=snap, snapformat=snapformat)
+        new_pos = com.re_center(halo_properties['pos'], pos_com)
+        new_vel = com.re_center(halo_properties['vel'], vel_com)
 
     else:
-        ids_rf = halo_ids(all_ids, N_halo_part, com_frame)
+        # computing reference frame coordinates
+        ids_RF =  halo_ids(all_ids, N_halo_part, com_frame)
+        pos_RF = load_snapshot(snap, snapformat, 'pos', 'dm')
+        vel_RF = load_snapshot(snap, snapformat, 'vel', 'dm')
+        mass_RF = load_snapshot(snap, snapformat, 'vel', 'dm')
 
-        pos_com, vel_com = get_com(all_pos[ids_rf], all_vell[ids_rf], all_mass[ids_rf], com_method)
+        pos_com, vel_com = get_com(pos_RF[ids_RF], vel_RF[ids_RF], mass_RF[ids_RF], com_method)
         new_pos = com.re_center(pos, pos_com)
         new_vel = vel.re_center(vel, vel_com)
 
-    del(pos, vel)
-
-    return new_pos, new_vel#, pot, mass, ids, pos_com, vel_com
+    halo_properties['pos']=new_pos
+    halo_properties['vel']=new_vel
+    
+    return halo_properties

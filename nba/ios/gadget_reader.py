@@ -22,7 +22,7 @@ def read_snap(snap_name, partType, properties):
 	"""
 
 	f = h5py.File(snap_name, 'r')
-	print("Loading '{}' of particles types '{}' from snapshot: '{}'".format(properties, partType, snap_name))
+	print("* Loading '{}' of particles types '{}' from snapshot: '{}'".format(properties, partType, snap_name))
 	particles = f[partType]
 	part_prop = particles.get(properties)
 	return part_prop
