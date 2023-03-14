@@ -2,6 +2,7 @@ import numpy as np
 from nba.ios.gadget_reader import is_parttype_in_file, read_snap
 from pygadgetreader import readsnap
 import nba.com as com
+import sys
 
 def load_snapshot(snapname, snapformat, quantity, ptype):
     """
@@ -63,7 +64,7 @@ def load_snapshot(snapname, snapformat, quantity, ptype):
             ptype =	'PartType3'
 			
         q = read_snap(snapname+".hdf5", ptype, q)
-    else : 
+    else:
         print('** Wrong snapshot format: (1) Gadget2/3, (2) ASCII, (3) Gadget4 (HDF5)')
         sys.exit()
     return np.ascontiguousarray(q)
@@ -183,13 +184,13 @@ def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
         [1500, 200, 50] would mean that the first halo have 1500 particles, the
         second halo 200, and the third and last halo 50 particles.
     q : list
-        Particles properties: ['pos', 'vel', 'pot', 'mass'] etc.. IDs are necessay and loaded by default.
+        Particles properties: ['pos', 'vel', 'pot', 'mass'] etc.. IDs are necessary and loaded by default.
     com_frame : int
         In which halo the coordinates will be centered 0 -> halo 1, 1 -> halo 2 etc..
     galaxy : int
         Halo particle data to return  0 -> halo 1, 1 -> halo 2 etc...
     snapformat: int
-        0 -> Gadget binnary, 2 -> ASCII, 3 -> Gadget HDF5
+        0 -> Gadget binary, 2 -> ASCII, 3 -> Gadget HDF5
     com_method : str
         Method to compute the COM 'shrinking', 'diskpot', 'mean_pos'
 
@@ -205,7 +206,7 @@ def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
     """
     # Load data
     print("* Loading snapshot: {} ".format(snap))
-    # TBD: Define more of quantities, such as acceleration etc.. unify this beter with ios
+    # TBD: Define more of quantities, such as acceleration etc.. unify this better with ios
 
     all_ids = load_snapshot(snap, snapformat, 'pid', 'dm')
     ids = halo_ids(all_ids, N_halo_part, galaxy)
@@ -217,10 +218,9 @@ def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
     
     for quantity in q:
         qall = load_snapshot(snap, snapformat, quantity, 'dm')
-        halo_properties[quantity] = qall[ids]
+        halo_properties[quantity] = qall
 
         
-    #if galaxy == 1:
     print("* Loading halo {} particle data".format(galaxy))
 
     print("* Computing coordinates in halo {} reference frame".format(com_frame))
@@ -235,11 +235,11 @@ def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
         ids_RF =  halo_ids(all_ids, N_halo_part, com_frame)
         pos_RF = load_snapshot(snap, snapformat, 'pos', 'dm')
         vel_RF = load_snapshot(snap, snapformat, 'vel', 'dm')
-        mass_RF = load_snapshot(snap, snapformat, 'vel', 'dm')
-
-        pos_com, vel_com = get_com(pos_RF[ids_RF], vel_RF[ids_RF], mass_RF[ids_RF], com_method)
-        new_pos = com.re_center(pos, pos_com)
-        new_vel = vel.re_center(vel, vel_com)
+        mass_RF = load_snapshot(snap, snapformat, 'mass', 'dm')
+        
+        pos_com, vel_com = get_com(pos_RF[ids_RF], vel_RF[ids_RF], mass_RF[ids_RF], com_method, snapname=snap, snapformat=snapformat)
+        new_pos = com.re_center(halo_properties['pos'], pos_com)
+        new_vel = com.re_center(halo_properties['vel'], vel_com)
 
     halo_properties['pos']=new_pos
     halo_properties['vel']=new_vel

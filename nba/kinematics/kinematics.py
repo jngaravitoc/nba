@@ -55,15 +55,15 @@ class Kinematics:
         """
         ## transforming to galactic coordinates.
 
-        c_gal = SkyCoord(self.pos, representation='cartesian', frame='galactic')
-        c_gal.representation = 'spherical'
+        c_gal = SkyCoord(self.pos, representation_type='cartesian', frame='galactic')
+        c_gal.representation_type = 'spherical'
 
         ## to degrees and wrapping l
 
-        l_degrees = c_gal.l.wrap_at(180 * u.deg).radian
-        b_degrees = c_gal.b.radian
+        l_radians= c_gal.l.wrap_at(180 * u.deg).radian
+        b_radians = c_gal.b.radian
 
-        return l_degrees, b_degrees
+        return l_radians, b_radians
 
     def galactic_coordinates_center(self):
         """
@@ -85,7 +85,7 @@ class Kinematics:
         #vel[:,2] = self.vel[:,2] - 7.25 # km/s
         return pos
 
-    def vel_cartesian_to_spherical(self, xyz, vxyz):
+    def vel_cartesian_to_spherical(self):
         """
         Transfromates velocites from the cartessian to spherical coordinates.
 
@@ -104,20 +104,20 @@ class Kinematics:
 
         """
 
-        r = np.sqrt(xyz[:,0]**2 + xyz[:,1]**2 + xyz[:,2]**2)
+        r = np.sqrt(self.pos[:,0]**2 + self.pos[:,1]**2 + self.pos[:,2]**2)
 
-        theta = np.arccos(xyz[:,2]/r)
-        phi = np.arctan2(xyz[:,1], xyz[:,0])
+        theta = np.arccos(self.pos[:,2]/r)
+        phi = np.arctan2(self.pos[:,1], self.pos[:,0])
 
-        v_r = np.sin(theta)*np.cos(phi)*vxyz[:,0] + \
-             np.sin(theta)*np.sin(phi)*vxyz[:,1] + \
-             np.cos(theta)*vxyz[:,2]
+        v_r = np.sin(theta)*np.cos(phi)*self.vel[:,0] + \
+             np.sin(theta)*np.sin(phi)*self.vel[:,1] + \
+             np.cos(theta)*self.vel[:,2]
 
-        v_theta = np.cos(theta)*np.cos(phi)*vxyz[:,0] +\
-                  np.cos(theta)*np.sin(phi)*vxyz[:,1] - \
-                  np.sin(theta)*vxyz[:,2]
+        v_theta = np.cos(theta)*np.cos(phi)*self.vel[:,0] +\
+                  np.cos(theta)*np.sin(phi)*self.vel[:,1] - \
+                  np.sin(theta)*self.vel[:,2]
 
-        v_phi = -np.sin(phi)*vxyz[:,0] + np.cos(phi)*vxyz[:,1]
+        v_phi = -np.sin(phi)*self.vel[:,0] + np.cos(phi)*self.vel[:,1]
 
         return v_r, v_theta, v_phi
 
@@ -125,7 +125,7 @@ class Kinematics:
 
     def orbpole(self):
         # Hacked from Ekta's code
-        # r x v in cartessian coordinates!
+        # r x v in cartesian coordinates!
         uu = np.cross(self.pos, self.vel)
         # |r.v|
         uumag = la.norm(uu, axis=1)
@@ -155,7 +155,7 @@ class Kinematics:
         npart = len(L[:,0])
         return np.sum(L[:,0])/npart, np.sum(L[:,1])/npart, np.sum(L[:,2])/npart
 
-    def vel_cartesian_to_galactic(self, xyz, vxyz):
+    def vel_cartesian_to_galactic(self):
         """
         Transfromates velocites from the cartessian to spherical coordinates.
         Very usefull when computing velocities in the galactic coordinates!
@@ -174,20 +174,20 @@ class Kinematics:
         v_l : np.array
 
         """
-        r = np.sqrt(xyz[:,0]**2 + xyz[:,1]**2 + xyz[:,2]**2)
+        r = np.sqrt(self.pos[:,0]**2 + self.pos[:,1]**2 + self.pos[:,2]**2)
 
-        theta = np.arcsin(xyz[:,2]/r)
-        phi = np.arctan2(xyz[:,1], xyz[:,0])
+        theta = np.arcsin(self.pos[:,2]/r)
+        phi = np.arctan2(self.pos[:,1], self.pos[:,0])
 
-        vr = np.cos(theta)*np.cos(phi)*vxyz[:,0] + \
-             np.cos(theta)*np.sin(phi)*vxyz[:,1] + \
-             np.sin(theta)*vxyz[:,2]
+        vr = np.cos(theta)*np.cos(phi)*self.vel[:,0] + \
+             np.cos(theta)*np.sin(phi)*self.vel[:,1] + \
+             np.sin(theta)*self.vel[:,2]
 
-        v_b = -np.sin(theta)*np.cos(phi)*vxyz[:,0] -\
-                  np.sin(theta)*np.sin(phi)*vxyz[:,1] + \
-                  np.cos(theta)*vxyz[:,2]
+        v_b = -np.sin(theta)*np.cos(phi)*self.vel[:,0] -\
+                  np.sin(theta)*np.sin(phi)*self.vel[:,1] + \
+                  np.cos(theta)*self.vel[:,2]
 
-        v_l = -np.sin(phi)*vxyz[:,0] + np.cos(phi)*vxyz[:,1]
+        v_l = -np.sin(phi)*self.vel[:,0] + np.cos(phi)*self.vel[:,1]
 
         return vr, v_b, v_l
 
