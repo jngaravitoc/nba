@@ -123,7 +123,7 @@ def halo_ids(pids, list_num_particles, gal_index):
 
 
 
-def get_com(pos, vel, mass, method, snapname=0, snapformat=0):
+def get_com(pos, vel, mass, method, snapname=0, snapformat=0, rmin=0, rmax=300):
     """
     Function that computes the COM using a chosen method
 
@@ -170,7 +170,7 @@ def get_com(pos, vel, mass, method, snapname=0, snapformat=0):
 
 
 def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
-              snapformat=3, com_method='shrinking'):
+              snapformat=3, com_method='shrinking', return_com = False):
     """
     Returns the halo properties.
 
@@ -209,11 +209,10 @@ def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
     # TBD: Define more of quantities, such as acceleration etc.. unify this better with ios
 
     all_ids = load_snapshot(snap, snapformat, 'pid', 'dm')
+    ids_sort = np.argsort(all_ids)
     ids = halo_ids(all_ids, N_halo_part, galaxy)
 
-    halo_properties = dict([
-                            ('ids', ids)]
-    )
+    halo_properties = dict([('ids', ids_sort[ids])])
     
     
     for quantity in q:
@@ -244,4 +243,7 @@ def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
     halo_properties['pos']=new_pos
     halo_properties['vel']=new_vel
     
-    return halo_properties
+    if return_com == True:
+        return halo_properties, pos_com, vel_com
+    else:
+        return halo_properties
