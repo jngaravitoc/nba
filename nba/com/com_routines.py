@@ -57,11 +57,11 @@ def mix_com(pos, vel, mass):
     com4 = shrinking_sphere(pos_recenter3[truncate3], vel_recenter3[truncate3],
                                 np.ones(len(truncate3))*mass[0])
 
-    print(com1)
-    print(com2)
-    print(com3)
-    print(com4)
-    pos_cm = com1[0] + com2[0] + com3[0] + com4[0]
-    vel_cm = com1[1] + com2[1] + com3[1] + com4[1]
-    print(pos_cm, vel_cm)
+    #print(com1)
+    #print(com2)
+    #print(com3)
+    #print(com4)
+    pos_com = com1[0] + com2[0] + com3[0] + com4[0]
+    vel_com = com1[1] + com2[1] + com3[1] + com4[1]
+    #print(pos_cm, vel_cm)
     return pos_com, vel_com

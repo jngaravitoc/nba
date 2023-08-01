@@ -3,7 +3,7 @@ import sys
 from nba.ios.io_snaps import halo_ids, load_snapshot
 from nba.ios import get_com
 
-def orbit(snapname, ninit, nfinal, com_frame, galaxy, N_halo_part, snapformat, com_method):
+def orbit(snapname, ninit, nfinal, com_frame, galaxy, N_halo_part, snapformat, com_method, rmin=0, rmax=0):
     """
     Computes the COM for a sequence of snapshots. 
 
@@ -21,7 +21,7 @@ def orbit(snapname, ninit, nfinal, com_frame, galaxy, N_halo_part, snapformat, c
         pos = all_pos[ids]
         vel = all_vel[ids]
         mass = all_mass[ids]
-        pos_com[k-ninit], vel_com[k-ninit] = get_com(pos, vel, mass, com_method, snapname+'_{:03d}'.format(k), snapformat)
+        pos_com[k-ninit], vel_com[k-ninit] = get_com(pos, vel, mass, com_method, snapname+'_{:03d}'.format(k), snapformat, rmin=rmin, rmax=rmax)
     return pos_com, vel_com
 
 if __name__ == '__main__':
