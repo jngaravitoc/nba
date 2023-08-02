@@ -102,7 +102,7 @@ def halo_ids(pids, list_num_particles, gal_index):
 
     sort_indexes = np.sort(pids)
     Ntot = len(pids)
-
+    print("Returning IDs for galaxy={}".format(gal_index))
     if gal_index ==0:
         N_cut_min = sort_indexes[0]
         N_cut_max = sort_indexes[int(sum(list_num_particles[:gal_index+1])-1)]
@@ -118,7 +118,7 @@ def halo_ids(pids, list_num_particles, gal_index):
     # selecting halo ids
     halo_ids = np.where((pids>=N_cut_min) & (pids<=N_cut_max))[0]
     assert len(halo_ids) == list_num_particles[gal_index], 'Something went wrong selecting the satellite particles'
-
+    print(len(halo_ids))
     return halo_ids
 
 
@@ -231,11 +231,11 @@ def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
 
     else:
         # computing reference frame coordinates
-        ids_RF =  halo_ids(all_ids, N_halo_part, com_frame)
+        ids_RF =  halo_ids(all_ids, N_halo_part, galaxy)
         pos_RF = load_snapshot(snap, snapformat, 'pos', 'dm')
         vel_RF = load_snapshot(snap, snapformat, 'vel', 'dm')
         mass_RF = load_snapshot(snap, snapformat, 'mass', 'dm')
-        
+        print(len(ids_RF)) 
         pos_com, vel_com = get_com(pos_RF[ids_RF], vel_RF[ids_RF], mass_RF[ids_RF], com_method, snapname=snap, snapformat=snapformat)
         new_pos = com.re_center(halo_properties['pos'], pos_com)
         new_vel = com.re_center(halo_properties['vel'], vel_com)
