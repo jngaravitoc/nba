@@ -7,5 +7,5 @@ setuptools.setup(
         author_email="ngaravito@flatironinstitute.org",
         description="Analysis of idealized N-body simulations using Python",
         packages=["nba", "nba/ios", "nba/com", "nba/structure",\
-                "nba/kinematics", "nba/orbits", "nba/visuals"]
+                "nba/kinematics", "nba/orbits", "nba/visuals", "nba/cosmology"],
         )
