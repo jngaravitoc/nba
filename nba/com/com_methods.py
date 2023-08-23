@@ -28,10 +28,6 @@ def re_center(vec, cm):
       new_vec[:,i] = vec[:,i] - cm[i]
     return new_vec
 
-
-
-
-
 def com_disk_potential(xyz, vxyz, Pdisk):
     V_radius = 2
     vx = vxyz[:,0]
@@ -41,7 +37,7 @@ def com_disk_potential(xyz, vxyz, Pdisk):
     y = xyz[:,1]
     z = xyz[:,2]
 
-    min_pot = np.where(Pdisk==min(Pdisk))[0]
+    min_pot = np.argmin(Pdisk)
     x_min = x[min_pot]
     y_min = y[min_pot]
     z_min = z[min_pot]
@@ -54,6 +50,7 @@ def com_disk_potential(xyz, vxyz, Pdisk):
     vx_cm = sum(vx[avg_particles])/len(avg_particles)
     vy_cm = sum(vy[avg_particles])/len(avg_particles)
     vz_cm = sum(vz[avg_particles])/len(avg_particles)
+
     return np.array([x_cm, y_cm, z_cm]), np.array([vx_cm, vy_cm, vz_cm])
 
 def velocities_com(cm_pos, pos, vel, r_cut=20):
@@ -73,7 +70,7 @@ def velocities_com(cm_pos, pos, vel, r_cut=20):
 
 
 
-def mean_pos(xyz, vxyz, m):
+def mean_pos(xyz, vxyz, m, rmin=0, rmax=0):
     """
     Returns the COM positions and velocities.
 
@@ -81,18 +78,32 @@ def mean_pos(xyz, vxyz, m):
 
     """
 
+    if ((rmin==0) & (rmax==0)):
+    
+        # Number of particles
+        N = np.sum(m)
 
-    # Number of particles
-    N = np.sum(m)
 
+        xCOM = np.sum(xyz[:,0]*m)/N
+        yCOM = np.sum(xyz[:,1]*m)/N
+        zCOM = np.sum(xyz[:,2]*m)/N
 
-    xCOM = np.sum(xyz[:,0]*m)/N
-    yCOM = np.sum(xyz[:,1]*m)/N
-    zCOM = np.sum(xyz[:,2]*m)/N
+        vxCOM = np.sum(vxyz[:,0]*m)/N
+        vyCOM = np.sum(vxyz[:,1]*m)/N
+        vzCOM = np.sum(vxyz[:,2]*m)/N
 
-    vxCOM = np.sum(vxyz[:,0]*m)/N
-    vyCOM = np.sum(vxyz[:,1]*m)/N
-    vzCOM = np.sum(vxyz[:,2]*m)/N
+    else: 
+        rsim = np.sqrt(np.sum(xyz**2, axis=1))
+        rcut = np.where((rsim<rmax) & (rsim>rmin))[0]
+        N = np.sum(m[rcut])
+
+        xCOM = np.sum(xyz[rcut,0]*m[rcut])/N
+        yCOM = np.sum(xyz[rcut,1]*m[rcut])/N
+        zCOM = np.sum(xyz[rcut,2]*m[rcut])/N
+        vxCOM = np.sum(vxyz[rcut,0]*m[rcut])/N
+        vyCOM = np.sum(vxyz[rcut,1]*m[rcut])/N
+        vzCOM = np.sum(vxyz[rcut,2]*m[rcut])/N
+        
 
     return np.array([xCOM, yCOM, zCOM]), np.array([vxCOM, vyCOM, vzCOM])
 
@@ -147,7 +158,7 @@ def shrinking_sphere(xyz, vxyz, m, delta=0.025):
 
 
 
-    while (((np.sqrt((xCM_new-xCM)**2 + (yCM_new-yCM)**2 + (zCM_new-zCM)**2) > delta) & (N>N_i*0.01)) | (N>1000)):
+    while (((np.sqrt((xCM_new-xCM)**2 + (yCM_new-yCM)**2 + (zCM_new-zCM)**2) > delta) & (N>N_i*0.01)) & (N>1000)):
         xCM = xCM_new
         yCM = yCM_new
         zCM = zCM_new

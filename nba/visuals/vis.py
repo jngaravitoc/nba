@@ -12,8 +12,8 @@ class Visuals:
     Class for plotting several halo quantities.
 
     """
-    def __init__(self):
-        x=3 		
+    def __init__(self, pos):
+        self.pos = pos 		
 
     #def quiver_plot(self, **kwargs):
     #	return 0
@@ -88,7 +88,6 @@ class Visuals:
 
         if type(figure_name) == str:
             plt.savefig(figure_name, bbox_inches='tight', dpi=80)
-            print("here")
         else:
             plt.show()
         # Loop over snapshots
@@ -166,40 +165,82 @@ class Visuals:
         return 0
 
 
-    def particle_slice(self, pos, nbins, norm, grid_size, cmap='magma'):
+    def particle2Dhist(self, nbins, projection_axis=[[0,1]], norm=LogNorm(), cmap='magma', **kwargs):
         """
-        Compute a density slice 
+        Computes 2d histograms from particle's coordinates 
+
+        pos_init :  
+        nbins : 
+
+        **kwargs:
+
+        text : str
+            
+        labels : list of strings [n, 2] : [[xlabel1, ylabel1], [xlabel2, ylabel2]...]
+             axis labels for each desired projection
+        gridsize : [n, 4] : [[min(x1), max(x1), min(y1), max(y1)], ...]
+            grid size for ploting hitogram with imshow
+
+        figname: str
+            name of the figure 
+
+        # TODO:
+        -Write doc string
+        -include text coorindated in kwargs
 
         """
-        hbxy = np.histogram2d(pos[:,0], pos[:,1], bins=nbins, normed=norm)
-        hbxz = np.histogram2d(pos[:,0], pos[:,2], bins=nbins, normed=norm)
-        hbyz = np.histogram2d(pos[:,1], pos[:,2], bins=nbins, normed=norm)
 
-        extent1 = [np.min(hbxy[1]), np.max(hbxy[1]), np.min(hbxy[2]), np.max(hbxy[2])]
-        extent2 = [np.min(hbxz[1]), np.max(hbxz[1]), np.min(hbxz[2]), np.max(hbxz[2])]
-        extent3 = [np.min(hbyz[1]), np.max(hbyz[1]), np.min(hbyz[2]), np.max(hbyz[2])]
-
-        fig, ax = plt.subplots(1, 3, figsize=(12, 4))
-        im1= ax[0].imshow(hbxy[0].T, norm=LogNorm(), origin='lower', extent=extent1, cmap=cmap, aspect='equal')
-        im2 = ax[1].imshow(hbxz[0].T, norm=LogNorm(), origin='lower', extent=extent2, cmap=cmap, aspect='equal')
-        im3 = ax[2].imshow(hbyz[0].T, norm=LogNorm(), origin='lower', extent=extent3,  cmap=cmap, aspect='equal')
+        kwargs_keys = kwargs.keys()
         
-        fig.colorbar(im1, ax=ax[0], orientation='horizontal')
-        fig.colorbar(im2, ax=ax[1], orientation='horizontal')
-        fig.colorbar(im3, ax=ax[2], orientation='horizontal')
-    
-        ax[0].set_xlabel('x[kpc]')
-        ax[0].set_ylabel('y[kpc]')
-        ax[1].set_xlabel('x[kpc]')
-        ax[1].set_ylabel('z[kpc]')
-        ax[2].set_xlabel('y[kpc]')
-        ax[2].set_ylabel('z[kpc]')
-        ax[0].set_xlim(grid_size[0], grid_size[1]) 
-        ax[0].set_ylim(grid_size[2], grid_size[3]) 
-        ax[1].set_xlim(grid_size[0], grid_size[1]) 
-        ax[1].set_ylim(grid_size[4], grid_size[5]) 
-        ax[2].set_xlim(grid_size[2], grid_size[3]) 
-        ax[2].set_ylim(grid_size[4], grid_size[5]) 
+        nprojections = len(projection_axis)
+        h_all = []
+        extent_all = []
+
+        for n in range(nprojections):
+            p1, p2 = projection_axis[n]
+            h = np.histogram2d(self.pos[:,p1], self.pos[:,p2], bins=nbins)
+            h_all.append(h)
+            extent = [np.min(h[1]), np.max(h[1]), np.min(h[2]), np.max(h[2])]
+            extent_all.append(extent)
+       
+        fig, ax = plt.subplots(1, nprojections, figsize=(4*nprojections, 4))
+        if nprojections==1:
+            axs = [ax]
+        else:
+            axs = ax.flatten()
+        
+        for n in range(nprojections):
+            p1, p2 = projection_axis[n]
+            if 'pos_ref' in kwargs.keys():
+                pos0 = kwargs['pos_ref']
+                h0 = np.histogram2d(pos0[:,p1], pos0[:,p2], bins=nbins)
+                if 'vmin' & 'vmax' in kwargs.keys():
+                    vmin = kwargs['vmin']
+                    vmax = kwargs['vmax']
+                    im = axs[n].imshow((h_all[n][0]/h0).T-1, vmin=vmin, vmax=vmax, origin='lower', extent=extent_all[n], cmap=cmap, aspect='equal')
+                else: 
+                    im = axs[n].imshow((h_all[n][0]/h0).T-1, origin='lower', extent=extent_all[n], cmap=cmap, aspect='equal')
+            else:
+               
+                im = axs[n].imshow(h_all[n][0].T, norm=norm, origin='lower', extent=extent_all[n], cmap=cmap, aspect='equal')
+            fig.colorbar(im, ax=axs[n], orientation='horizontal') 
+            if 'text' in  kwargs.keys() :
+                # TODO add text posiitons to kwargs! 
+                axs[0].text(-200, 200, kwargs['text'])
+        
+            if 'labels' in kwargs.keys():
+                labels = kwargs['labels']
+                axs[n].set_xlabel(labels[n][0] + r'$\rm{[kpc]}$')
+                axs[n].set_ylabel(labels[n][1] + r'$\rm{[kpc]}$')
+
+            if 'gridsize' in kwargs.keys():
+                gridsize=kwargs['gridsize'] 
+                axs[n].set_xlim(gridsize[n][0], grid_size[n][1]) 
+                axs[n].set_ylim(gridsize[n][2], grid_size[n][3]) 
+            
+        if 'figname' in kwargs.keys():
+            plt.savefig(kwargs['figname'], bbox_inches='tight')
+
         return fig
 
     def animate(self, snapshot, snap_format, init, final, fig_name=0, npart=10000):
