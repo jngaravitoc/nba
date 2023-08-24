@@ -41,13 +41,13 @@ from astropy import units as u
 import sys
 import pynbody
 
-sys.path.append("/mnt/home/ecunningham/python")
-#plt.style.use('~/matplotlib.mplstyle')
+#sys.path.append("/mnt/home/ecunningham/python")
+
 import gizmo_analysis as ga
 import halo_analysis as halo
 
 # personal n-body analysis library 
-import nba
+#import nba
 
 # local libraries
 import pynbody_routines  as pr 
