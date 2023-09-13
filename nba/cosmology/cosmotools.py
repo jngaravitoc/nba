@@ -189,7 +189,7 @@ class Cosmology:
         return f
 
 
-    def cx(self, c_guess, c_given, given):
+    def cx(self, c_guess, c_given, given_r, z):
         """
         function that relates the concetrations at the viral radius rvir and r200 for the NFW profile 
         See Eqn. A6 in the Van der Marel 2012 paper. 
@@ -205,25 +205,24 @@ class Cosmology:
             value tu minimize to find the desried concentration
         """
         #q = 2.058
-        Deltavir = self.Dvir(z, self.H_0, self.Omega0)
+        Deltavir = self.Dvir(z)
         q = 200 /  Deltavir / self.Omega0  
-        print(q)    
         
-        if given == 'virial':
+        if given_r == 'virial':
             y = (c_guess / c_given) - (self.fx(c_guess) / (q * self.fx(c_given)))**(1./3.)
-        if given == '200':
+        if given_r == '200':
             y = (c_given / c_guess) - (self.fx(c_given) / (q * self.fx(c_guess)))**(1./3.)
         return y
 
     # Function to compute the c200
-    def cvirc200(self, cvir=None, c200=None):
+    def cvirc200(self, cvir=None, c200=None, z=0):
         """
         
         """
         if c200 == None:
-            c_guess = bisect(self.cx, 0.1, cvir, args=((cvir, 'virial')))     
+            c_guess = bisect(self.cx, 0.1, cvir, args=((cvir, 'virial', z)))     
         if cvir == None:
-            c_guess = bisect(self.cx, 0.1, 2*c200, args=((c200, '200')))
+            c_guess = bisect(self.cx, 0.1, 2*c200, args=((c200, '200', z)))
             
         return c_guess
 
@@ -236,13 +235,13 @@ class Cosmology:
         return x
 
 
-    def NFW_virial(self, M200, c200):
-        cvir = self.cvirc200(c200=c200)
+    def NFW_virial(self, M200, c200, z=0):
+        cvir = self.cvirc200(c200=c200, z=z)
         Mvir = M200 / self.m200mvir(c200, cvir)
         return Mvir, cvir
 
-    def NFW_200(self, Mvir, cvir):
-        c200 = self.cvirc200(cvir=cvir)
+    def NFW_200(self, Mvir, cvir, z=0):
+        c200 = self.cvirc200(cvir=cvir, z=z)
         M200 = Mvir * self.m200mvir(c200, cvir)
         return M200, c200
 
@@ -287,7 +286,7 @@ class Cosmology:
         a = r200 / c200 * np.sqrt(2 * np.log(1 + c200) - c200/(1+c200))
         return a
 
-    def NFW_Mscale(mass_x, c_x):
+    def NFW_Mscale(self, mass_x, c_x):
         """
         Function to compute the scale mass of an NFW halo
         Parameters:
