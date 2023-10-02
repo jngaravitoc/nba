@@ -171,7 +171,7 @@ class FIRE:
 
   """
 
-  def __init__(self, sim, remove_satellite=False, remove_subs=False, only_sat=False, rm_stellar_sat=False):
+  def __init__(self, sim, sat_path, stars_path, subs_path, remove_satellite=False, remove_subs=False, only_sat=False, rm_stellar_sat=False):
 
     self.sim_directory = "/mnt/ceph/users/firesims/fire2/metaldiff/{}_res7100/".format(sim)
     
