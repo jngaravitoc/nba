@@ -24,9 +24,9 @@ import nba
 import healpy as hp
 from healpy.newvisufunc import projview, newprojplot
 
-sys.path.append("/mnt/home/ecunningham/python")
-plt.style.use('~/matplotlib.mplstyle')
-plt.rcParams['font.size'] = 35
+#sys.path.append("/mnt/home/ecunningham/python")
+#plt.style.use('~/matplotlib.mplstyle')
+#plt.rcParams['font.size'] = 35
 
 def multipanel_plot(hf, hs, satellite_faceon, snap, sim, figname):
     """
