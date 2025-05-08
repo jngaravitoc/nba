@@ -181,7 +181,7 @@ def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
         name of the snapshot
     N_halo_part : list
         A list with the number of particles of all the galaxies in the ids.
-        [1500, 200, 50] would mean that the first halo have 1500 particles, the
+i       [1500, 200, 50] would mean that the first halo have 1500 particles, the
         second halo 200, and the third and last halo 50 particles.
     q : list
         Particles properties: ['pos', 'vel', 'pot', 'mass'] etc.. IDs are necessary and loaded by default.
@@ -217,7 +217,7 @@ def load_halo(snap, N_halo_part, q, com_frame=0, galaxy=0,
     
     for quantity in q:
         qall = load_snapshot(snap, snapformat, quantity, 'dm')
-        halo_properties[quantity] = qall
+        halo_properties[quantity] = qall[ids]
 
         
     print("* Loading halo {} particle data".format(galaxy))
