@@ -217,7 +217,7 @@ i       [1500, 200, 50] would mean that the first halo have 1500 particles, the
     
     for quantity in q:
         qall = load_snapshot(snap, snapformat, quantity, 'dm')
-        halo_properties[quantity] = qall[ids]
+	halo_properties[quantity] = qall[ids]
 	print('Done loading {} with {} particles'.format(quantity, len(halo_properties)))
         
     print("* Loading halo {} particle data".format(galaxy))
