@@ -146,9 +146,13 @@ def mollweide_projection(l, b, l2, b2, title, bmin, bmax, nside, smooth, q=[0], 
         hpx_map[idx] = counts
     else :
        hpx_map[idx] = counts/degsq
-    
+
     map_smooth = hp.smoothing(hpx_map, fwhm=smooth*np.pi/180)
-    
+   
+    if ((bmin == 'auto') & (bmax == 'auto')):
+        bmin = np.min(map_smooth)
+        bmax = np.max(map_smooth)
+
     if 'cmap' in kwargs.keys():
         cmap = kwargs['cmap']
     else:
