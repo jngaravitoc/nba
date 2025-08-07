@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
+from astropy.constants import G
 import healpy as hp
 from healpy.newvisufunc import projview, newprojplot
 
