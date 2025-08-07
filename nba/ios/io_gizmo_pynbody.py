@@ -41,7 +41,7 @@ import pynbody
 import gizmo_analysis as ga
 import halo_analysis as halo
 
-
+"""
 # local libraries
 import pynbody_routines as pr 
 
@@ -137,11 +137,12 @@ def get_halo_satellite(sim, mass_rank):
 
 
 
+
 class FIRE:
-  """
+  '''
   Class to load FIRE snapshots and subhalos using pynbody format.
 
-  """
+  '''
 
   def __init__(self, sim, sat_path, stars_path, subs_path, remove_satellite=False, remove_subs=False, only_sat=False, rm_stellar_sat=False):
 
@@ -203,7 +204,7 @@ class FIRE:
     
 
   def rotated_halo(self, snap, part_sample=1, rotate=True):
-    """
+    '''
     Reads a halo an return its particles data in faceon projection in pynbody halo format.
 
     The function also performs the following analysis:
@@ -219,7 +220,7 @@ class FIRE:
     Returns:
     --------
 
-    """
+    '''
 
     # Read snapshot
     p = ga.io.Read.read_snapshots(['dark', 'star'], 'index', snap, self.sim_directory, 
@@ -262,7 +263,7 @@ class FIRE:
 
 
   def get_catids_satsubhalos(self):
-    """
+    '''
     Returns subhalos from a satellite galaxy
 
     Parameters:
@@ -272,7 +273,7 @@ class FIRE:
 
     Returns: 
 
-    """
+    '''
 
     # Read simulations tree 
     halt = halo.io.IO.read_tree(simulation_directory=self.sim_directory)
@@ -346,9 +347,9 @@ class FIRE:
 
 
   def subhalos_rotated(self, snap):
-    """
+    '''
     Sat_index = -2 for m12b. Second massive subhhalo at snap 300
-    """
+    '''
     p = ga.io.Read.read_snapshots(['dark', 'star'], 'index', snap, self.sim_directory, 
                               assign_hosts=True, particle_subsample_factor=1, sort_dark_by_id=True)
     #Building pynbody subhalos in halo format
@@ -420,3 +421,4 @@ class FIRE:
       sat_tree_id = m12_subhalos['tree.index'][sat_id]
       satellite = return_tracked_pos(halt, sat_tree_id, pynbody_halo=True)
       return satellite
+  """
