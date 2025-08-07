@@ -19,7 +19,7 @@ class Cosmology:
         self.H_0 = H_0
         self.Omega0 = Omega0
         self.h = h
-        self.G = G
+        self.G = constants.G
 
     def H(self, z):
         """
@@ -38,9 +38,7 @@ class Cosmology:
         --------    
         Hubble parameter at redshift z in units of km/s/Mpc
         """
-        
-
-
+     
 
         Lambda0 = 1. - self.Omega0
         return self.H_0*(self.Omega0*(1+z)**3 - (self.Omega0+Lambda0-1)*(1+z)**2 + Lambda0)**0.5
@@ -229,7 +227,7 @@ class Cosmology:
     def m200mvir(self, c200, cvir):
         """
         x = M200/Mvir
-
+        For the NFW profile ? 
         """
         x = self.fx(c200) / self.fx(cvir)
         return x
