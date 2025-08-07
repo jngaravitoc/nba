@@ -11,7 +11,7 @@ TODO:
 import numpy as np
 from scipy.optimize import bisect
 from astropy import units
-from astropy import constants   
+from astropy import constants
 
 
 class Cosmology:
@@ -270,7 +270,7 @@ class Cosmology:
         
         # H = 3.2407789E-18  / units.s * 0.7
 
-        v = (M*np.sqrt(48.6)*G*self.H_0 / self.h)**(1.0/3.0)
+        v = (M*np.sqrt(48.6)*self.G*self.H_0 / self.h)**(1.0/3.0)
         v = v.to(units.km / units.s)
         return v
 
