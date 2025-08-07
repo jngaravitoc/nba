@@ -1,0 +1,56 @@
+[project]
+name = "astro-nba"
+version = "0.2"
+description = "Analysis of N-body simulations using Python"
+authors = [
+    { name = "Nicolas Garavito Camargo", email = "jngaravitoo@arizona.edu" }
+]
+readme = "README.md"  # Optional if you have a README
+requires-python = ">=3.10"
+license.file = "LICENSE" 
+keywords = ["nbody", "astrophysics", "astronomy", "simulations"]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Astronomy",
+]
+ 
+dependencies = [
+    "numpy>=1.26.4",
+    "scipy>=1.12",
+    "astropy>=6.0",
+    "h5py>=3.11.0",
+    "matplotlib>=3.8"
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "orbitas.__version__"} 
+
+
+[project.urls]
+Homepage = "https://github.com/jngaravitoc/astro-nba"  
+
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nba*", "nba.decorators"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project.optional-dependencies]
+
+dev = ["pytest", "flake8"]
+extra = [
+    "healpy",
+    "numba",
+    "gizmo_analysis", # Require to use with the FIRE simulations
+    "halo_analysis" # Require to use with the FIRE simulations
+]
+all = [
+    "healpy",
+    "gala>=1.10.0",
+    "pytest",
+    "flake8"]
