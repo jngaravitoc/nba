@@ -5,11 +5,6 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 
-"""
-TODO:
-----
-
-"""
 
 class Structure:
     def __init__(self, pos, mass):

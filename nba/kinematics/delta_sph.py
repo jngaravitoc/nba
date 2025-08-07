@@ -7,12 +7,7 @@ import pynbody
 import healpy as hp
 from healpy.newvisufunc import projview, newprojplot
 
-sys.path.append("../scripts/src/")
-
-sys.path.append("/mnt/home/ecunningham/python")
 #plt.style.use('~/matplotlib.mplstyle')
-import gizmo_analysis as ga
-import halo_analysis as halo
 import nba
 
 # 
@@ -48,6 +43,9 @@ def sim_angmom(sim, snap):
     return pos_rx
 
 
+
+
+
 def delta_k(pos_rx, k):
     npoints = np.shape(pos_rx)[1]
     index = np.linspace(0, npoints-1, npoints)
@@ -77,6 +75,7 @@ def delta_k(pos_rx, k):
             #print(delta_sph_k)
         delta_sph[n] = np.sqrt(np.sum(delta_sph_k**2, axis=0)/k)
     return np.min(delta_sph)
+
 
 if __name__ == "__main__":
     dsph_m12b = np.zeros((21, 7))

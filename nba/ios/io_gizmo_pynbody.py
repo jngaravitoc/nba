@@ -33,25 +33,17 @@ TODO:
 
 #!/usr/bin/env python
 # coding: utf-8
-
-
 import numpy as np
-import matplotlib.pyplot as plt
 from astropy import units as u
-import sys
+from astropy.coordinates import Angle
 import pynbody
-
-#sys.path.append("/mnt/home/ecunningham/python")
 
 import gizmo_analysis as ga
 import halo_analysis as halo
 
-# personal n-body analysis library 
-#import nba
 
 # local libraries
-import pynbody_routines  as pr 
-import plotting as pl
+import pynbody_routines as pr 
 
 
 ## Tracking subhalos using their index at 300th snap (using only merger tree)
@@ -125,27 +117,7 @@ def return_tracked_pos_back(halo_tree, tr_ind_at_init, pynbody_halo=False, nsnap
                 'mass' : mass,
                 'velocity' : velocity,
                }
-    
-    
-def poles_subhalos(snap, rmin=20, rmax=400, satellites=False):
-    f = 1* (u.km/u.s).to(u.kpc/u.Gyr)
-    m12_halo = halo.io.IO.read_catalogs('index', snap, sim_directory)
-    dist = np.sqrt(np.sum(m12_halo['host.distance']**2, axis=1))
-    rcut = np.where((dist>rmin) & (dist<rmax))
-                    
-    m12_300 = nba.kinematics.Kinematics(m12_halo['host.distance'][rcut], m12_halo['host.velocity'][rcut]*f)
-    l, b = m12_300.orbpole()
-
-    lpol = Angle(l * u.deg)
-    lpolw = lpol.wrap_at(360 * u.deg).degree  
-    
-    if satellites == True :
-        stellar_subhalos = m12_halo['star.mass'][rcut]!=-1
-
-        return lpolw[stellar_subhalos], b[stellar_subhalos]
-    else :
-        return lpolw, b
-
+   
 
 # Get all the subhalos
 def get_halo_satellite(sim, mass_rank):
@@ -437,7 +409,6 @@ class FIRE:
       return hsub
   
 
- 
   def get_halo_satellite(self, mass_rank):
       """
       Get satellites info from snap 300 to 600
