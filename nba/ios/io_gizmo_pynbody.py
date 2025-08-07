@@ -127,7 +127,7 @@ def get_halo_satellite(sim, mass_rank):
     hsub = pr.pynbody_subhalos(m12_subhalos)
     sat_id = np.argsort(hsub.dark['mass'])[mass_rank]
     sat_tree_id = m12_subhalos['tree.index'][sat_id]
-    satellite = fa.return_tracked_pos(halt, sat_tree_id, pynbody_halo=True)
+    satellite = return_tracked_pos(halt, sat_tree_id, pynbody_halo=True)
     f = 1* (u.km/u.s).to(u.kpc/u.Gyr)
     m12_sat = nba.kinematics.Kinematics(satellite['pos'], satellite['vel']*f)
     l, b = m12_sat.orbpole()

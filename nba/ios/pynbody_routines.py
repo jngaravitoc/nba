@@ -81,9 +81,7 @@ def makePBrotation(halo):
    return Tx_faceon, Tx_sideon
 
 
-## Old routines that could be useful in the future when working with FIRE data!
-"""
-
+@requires_library("pynbody")
 def pynbody_halo(particles, mask=0, masks=0):
     
    if type(mask)==int :
@@ -121,6 +119,7 @@ def pynbody_halo(particles, mask=0, masks=0):
     
    return halo_pynb
 
+@requires_library("pynbody")
 def pynbody_subhalos(particles, mask=0):
 
    if type(mask)==int :
@@ -160,6 +159,7 @@ def pynbody_subhalos(particles, mask=0):
    
    return halo_pynb
 
+@requires_library("pynbody")
 def pynbody_satellite(particles, **kwargs):
    ndark = len(particles['mass'])
    halo_pynb = pynbody.new(dark=int(ndark))
@@ -171,4 +171,3 @@ def pynbody_satellite(particles, **kwargs):
       halo_pynb.dark['treeind'] = particles['treeind']
    
    return halo_pynb
-"""
