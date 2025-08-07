@@ -1,5 +1,5 @@
 """
-Simulations data reader
+Simulations data reader functionality
 """
 
 import os
@@ -193,7 +193,7 @@ class ReadGC21:
         self.snapname = snapname
         self.full_snap_path = os.path.join(self.path, self.snapname)
 
-    def read_halo(self, quantity, halo):
+    def read_halo(self, quantity, halo, randomsample=None):
         """
         Load particle data for a specified halo ("MW" or "LMC") and desired quantities.
 
@@ -226,32 +226,29 @@ class ReadGC21:
         # Read snapshot and header
         GC21 = ReadGadgetSim(self.path, self.snapname)
         GC21_dm_data = GC21.read_snapshot(quantity=quantity, ptype='dm')
-        GC21_header = GC21.read_header()
+        #GC21_header = GC21.read_header()
 
-        # NOTE: This should be parameterized ideally
         npart_mw = 100_000_000
-        npart_sat = GC21_header['NumPart_Total'][1] - npart_mw
+        #npart_sat = GC21_header['NumPart_Total'][1] - npart_mw
 
-        #ids_sort = np.argsort(GC21_dm_data['pid'])
-
-        #if halo == 'MW':
-        #    halo_idx = ids_sort[:npart_mw]
-        #elif halo == 'LMC':
-        #    halo_idx = ids_sort[npart_mw:]
-        #    assert len(halo_idx) == npart_sat
-        #else:
-        #    raise ValueError("Halo must be 'MW' or 'LMC'.")
-
-        #for q in quantity:
-        #    GC21_dm_data[q] = GC21_dm_data[q][halo_idx]
-        
         if halo == 'MW':
             halo_ids = np.sort(GC21_dm_data['pid'])[:npart_mw]
         elif halo == 'LMC':
             halo_ids = np.sort(GC21_dm_data['pid'])[npart_mw:]
+        else:
+            halo_ids = GC21_dm_data['pid']
 
         # Build a boolean mask from IDs
         mask = np.isin(GC21_dm_data['pid'], halo_ids)
-        for q in quantity:
-            GC21_dm_data[q] = GC21_dm_data[q][mask]
+
+        if randomsample:
+            npart = len(halo_ids)
+            mask_rand = np.zeros(npart, dtype=bool)
+            idx_rand = np.random.randint(0, npart, randomsample)
+            mask_rand[idx_rand] = True
+            for q in quantity:
+                GC21_dm_data[q] = GC21_dm_data[q][mask][mask_rand]
+        else:
+            for q in quantity:
+                GC21_dm_data[q] = GC21_dm_data[q][mask]
         return GC21_dm_data
