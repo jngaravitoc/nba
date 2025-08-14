@@ -7,7 +7,7 @@ import healpy as hp
 from healpy.newvisufunc import projview, newprojplot
 
 
-
+'''
 class Visuals:
     """
     Class for plotting several halo quantities.
@@ -250,3 +250,4 @@ class Visuals:
             scatter(pos, npart, figure_name=fig_name+"{:03d}.png".format(k))
         return 0
 
+'''
