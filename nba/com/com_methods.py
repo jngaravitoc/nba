@@ -111,9 +111,10 @@ class CenterHalo:
         self.mass = Halo['mass']
         self.pot = Halo.get('pot', None)  # Optional
 
-    def recenter(self, vec: np.ndarray, cm: np.ndarray) -> np.ndarray:
+    def recenter(self, com, vcom):
         """Subtract center-of-mass vector from a 2D array of vectors."""
-        return vec - cm
+        self.pos -= com
+        self.vel -= vcom
 
     def min_potential(self, disk_pot=None, rcut: float = 2.0):
         """Center-of-mass position and velocity near the potential minimum."""
