@@ -1,2 +1,1 @@
-from .structure import Structure 
-
+from .structure import Profiles
