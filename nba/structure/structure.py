@@ -1,34 +1,67 @@
-# -*- coding: utf-8 -*-
-
-
 import numpy as np
-from astropy.coordinates import SkyCoord
-from astropy import units as u
+from scipy.interpolate import BSpline, splrep
 
 
-class Structure:
-    def __init__(self, pos, mass):
+class Profiles:
+    def __init__(self, pos, edges):
         self.pos = pos
-        self.mass = mass
+        self.edges = edges
+
+        assert np.shape(self.edges)[0] > 1, "Edges array needs to have more than one element!"
+        assert np.shape(self.pos)[0] > 0, "Positions array is empty!"
         assert np.shape(self.pos)[1] == 3, "Positions array dimension it's not 3. positions arrays needs to be of shape (npart, 3) !"
 
-    def density_profile(self, nbins, rmin, rmax):
+    
+    def density(self, smooth=0, mass=1.0):
         """
-        Computes the number density radial profile. Assuming all the partiles have the same mass.
+        Computes the number/mass density radial profile for equal-mass particles.
+
+        Parameters
+        ----------
+        smooth : bool, optional
+            If True, applies a smoothing spline to the density profile.
+            Default is False.
+            Common values are between 0.0 (not smoothed) - 2.0.
+        mass : float or array-like, optional
+            Particle mass (scalar if all equal).
+
+        Returns
+        -------
+        r_centers : ndarray
+            Bin center radii.
+        dens_profile : ndarray
+            Density in each radial bin.
         """
-       
+        # Radial distances
         r_p = np.sqrt(np.sum(self.pos**2, axis=1))
-        dens_profile = np.zeros(nbins-1)
-        dr = np.linspace(rmin, rmax, nbins)
-        delta_r = (dr[2]-dr[1])*0.5
 
-        for j in range(0, len(dr)-1):
-            index = np.where((r_p < dr[j+1]) & (r_p > dr[j]))[0]
-            V = 4/3 * np.pi * (dr[j+1]**3-dr[j]**3)
-            dens_profile[j] = np.sum(self.mass[index])/V
-        return  dr[:-1] + delta_r, dens_profile
+        # Histogram for counts (or mass if mass array provided)
+        if np.isscalar(mass):
+            mass_per_particle = mass 
+            hist, _ = np.histogram(r_p, bins=self.edges)
+            mass_hist = hist * mass_per_particle
+        else:
+            mass_hist, _ = np.histogram(r_p, bins=self.edges, weights=mass)
 
-    def potential_profile(self, pot, nbins, rmin, rmax):
+        # Volumes for each spherical shell
+        r_outer = self.edges[1:]
+        r_inner = self.edges[:-1]
+        
+        volumes = (4.0 / 3.0) * np.pi * (r_outer**3 - r_inner**3)
+
+        # Density = mass / volume
+        dens_profile = mass_hist / volumes
+
+        # Bin centers
+        r_centers = 0.5 * (r_outer + r_inner)
+
+        if smooth > 0:
+            tck_s = splrep(r_centers, np.log10(dens_profile), s=smooth)
+            dens_profile = 10**(BSpline(*tck_s)(r_centers))
+
+        return r_centers, dens_profile
+
+    def potential(self, pot, nbins, rmin, rmax):
         """
         Computes the halo potential profile.
     	"""
@@ -42,7 +75,7 @@ class Structure:
             pot_profile[j] = np.sum(pot[index])
         return  dr[:-1] + delta_r, pot_profile
 
-    def enclosed_mass(self, nbins, rmin, rmax):
+    def enclosed_mass(self, nbins, rmin, rmax, mass):
         """
         Computes the halo potential profile.
         """
@@ -52,9 +85,12 @@ class Structure:
         delta_r = (dr[2]-dr[1])*0.5
         for j in range(0, len(dr)-1):
             index = np.where((r_p < dr[j+1]))[0]
-            mass_profile[j] = np.sum(self.mass[index])
+            mass_profile[j] = np.sum(mass[index])
         return  dr[:-1] + delta_r, mass_profile
 
+
+    ''''
+    ## TODO: this shouls be part of another function to make sky cuts
     def density_octants(pos, vel, nbins, rmax):
 
         """
@@ -107,6 +143,5 @@ class Structure:
                 k+=1
 
         return rho_octants
+    '''
 
-if __name__ == '__main__':
-    print("Hello")
