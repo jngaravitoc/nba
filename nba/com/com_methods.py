@@ -107,14 +107,15 @@ def ssphere_numba(xyz, vxyz, mass, delta=0.025, rcut=20.0):
 class CenterHalo:
     def __init__(self, Halo):
         self.pos = Halo['pos']
-        self.vel = Halo['vel']
-        self.mass = Halo['mass']
+        self.vel = Halo.get('vel', None)
+        self.mass = Halo.get('mass', None)
         self.pot = Halo.get('pot', None)  # Optional
 
-    def recenter(self, com, vcom):
+    def recenter(self, com, vcom=None):
         """Subtract center-of-mass vector from a 2D array of vectors."""
         self.pos -= com
-        self.vel -= vcom
+        if hasattr(self, "vel"):
+            self.vel -= vcom
 
     def min_potential(self, disk_pot=None, rcut: float = 2.0):
         """Center-of-mass position and velocity near the potential minimum."""
