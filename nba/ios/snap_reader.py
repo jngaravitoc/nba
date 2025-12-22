@@ -263,3 +263,141 @@ class ReadGC21:
                     GC21_dm_data[q] = GC21_dm_data[q][mask_rand]
            
         return GC21_dm_data
+
+class ReadSheng24:
+    """
+    Snapshot reader for the Sheng et al. (2024) simulation suite.
+
+    This class provides a thin interface around ``ReadGadgetSim`` with
+    additional logic to separate Milky Way (MW) and LMC dark matter
+    components based on particle mass.
+    """
+
+    def __init__(self, path: str, snapname: str):
+        """
+        Initialize the Sheng+24 snapshot reader.
+
+        Parameters
+        ----------
+        path : str
+            Path to the directory containing the snapshot.
+        snapname : str
+            Snapshot filename.
+        """
+        self.path = path
+        self.snapname = snapname
+        self.full_snap_path = os.path.join(self.path, self.snapname)
+
+    def get_mw_lmc_ids(self, all_particles_mass):
+        """
+        Split particle indices into MW and LMC components based on particle mass.
+
+        Assumes exactly two distinct particle masses, assigning the more numerous
+        population to the Milky Way (MW) and the less numerous to the LMC.
+
+        Parameters
+        ----------
+        all_particle_mass : array_like
+            Array of particle masses.
+
+        Returns
+        -------
+        mw_ids : ndarray
+            Indices of MW particles.
+        lmc_ids : ndarray
+            Indices of LMC particles.
+
+        Raises
+        ------
+        ValueError
+            If the number of unique particle masses is not exactly two or if the
+            populations have equal size.
+        """
+        particle_masses = np.unique(all_particles_mass)
+
+        if len(particle_masses) != 2:
+            raise ValueError(
+                f"Expected exactly 2 unique particle masses, got {len(particle_masses)}"
+            )
+
+        ids_1 = np.where(all_particles_mass == particle_masses[0])[0]
+        ids_2 = np.where(all_particles_mass == particle_masses[1])[0]
+
+        if len(ids_1) > len(ids_2):
+            mw_ids, lmc_ids = ids_1, ids_2
+        elif len(ids_2) > len(ids_1):
+            mw_ids, lmc_ids = ids_2, ids_1
+        else:
+            raise ValueError(
+                "Particle populations have equal size; cannot distinguish MW/LMC"
+            )
+
+        return mw_ids, lmc_ids
+
+    def read_particles(self, quantity, halo, ptype, randomsample=None):
+        """
+        Read particle data from the snapshot, optionally filtering by halo.
+
+        Parameters
+        ----------
+        quantity : str or sequence of str
+            Particle quantities to read (e.g., ``'pos'``, ``'vel'``, ``'mass'``).
+        halo : {'MW', 'LMC'}
+            Halo component to select (only applied for ``ptype='dm'``).
+        ptype : str
+            Particle type (e.g., ``'dm'``, ``'gas'``, ``'star'``).
+        randomsample : int or None, optional
+            Random subsampling size (not implemented).
+
+        Returns
+        -------
+        particle_data : dict
+            Dictionary mapping quantity names to NumPy arrays.
+
+        Raises
+        ------
+        ValueError
+            If ``randomsample`` is requested.
+        """
+        if isinstance(quantity, str):
+            quantity = [quantity]
+        else:
+            quantity = list(quantity)
+
+        if 'pid' not in quantity:
+            quantity.append('pid')
+
+        snap = ReadGadgetSim(self.path, self.snapname)
+        particle_data = snap.read_snapshot(quantity=quantity, ptype=ptype)
+
+        if ptype == 'dm':
+            mw_ids, lmc_ids = self.get_mw_lmc_ids(particle_data['mass'])
+
+            if halo == 'MW':
+                ids = mw_ids
+            elif halo == 'LMC':
+                ids = lmc_ids
+            else:
+                raise ValueError(f"Unknown halo '{halo}'")
+
+            for q in quantity:
+                particle_data[q] = particle_data[q][ids]
+
+        if randomsample is not None:
+            raise ValueError("Random sample not implemented yet")
+
+        return particle_data
+
+    def read_header(self):
+        """
+        Read and return the snapshot header.
+
+        Returns
+        -------
+        header : dict
+            Snapshot header information.
+        """
+        snap = ReadGadgetSim(self.path, self.snapname)
+        return snap.read_header()
+
+
