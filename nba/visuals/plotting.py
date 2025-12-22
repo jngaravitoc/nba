@@ -24,9 +24,6 @@ import nba
 import healpy as hp
 from healpy.newvisufunc import projview, newprojplot
 
-#sys.path.append("/mnt/home/ecunningham/python")
-#plt.style.use('~/matplotlib.mplstyle')
-#plt.rcParams['font.size'] = 35
 
 def multipanel_plot(hf, hs, satellite_faceon, snap, sim, figname):
     """
@@ -228,4 +225,5 @@ def plot_2dcorrfunc(w, w0, t0, t1, title, figname, hlines=[],  vmin=-0.1, vmax=0
         ax.axhline(hlines[n], ls='--', c='k', lw=1)
 
     plt.savefig(figname, bbox_inches='tight', dpi=300)
+
 

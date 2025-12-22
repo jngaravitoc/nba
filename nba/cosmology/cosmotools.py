@@ -12,7 +12,7 @@ import numpy as np
 from scipy.optimize import bisect
 from astropy import units
 from astropy import constants
-
+'''
 
 class Cosmology:
     def __init__(self, H_0=67.8 * units.km / (units.s * units.Mpc), Omega0=0.27,  h=0.7, G=4.302E-6 * units.kpc**3 / units.Msun / units.s**2):
@@ -221,7 +221,7 @@ class Cosmology:
             c_guess = bisect(self.cx, 0.1, cvir, args=((cvir, 'virial', z)))     
         if cvir == None:
             c_guess = bisect(self.cx, 0.1, 2*c200, args=((c200, '200', z)))
-            
+      
         return c_guess
 
     def m200mvir(self, c200, cvir):
@@ -300,3 +300,4 @@ class Cosmology:
         fx = np.log(1.0 + c_x) - (c_x / (1.0 + c_x))
         return mass_x / fx
 
+'''

@@ -155,7 +155,7 @@ class Kinematics:
         npart = len(L[:,0])
         return np.sum(L[:,0])/npart, np.sum(L[:,1])/npart, np.sum(L[:,2])/npart
 
-    def vel_cartesian_to_galactic(self):
+    def vel_cartesian_to_galactic(self, **kwargs):
         """
         Transfromates velocites from the cartessian to spherical coordinates.
         Very usefull when computing velocities in the galactic coordinates!
@@ -174,6 +174,7 @@ class Kinematics:
         v_l : np.array
 
         """
+
         r = np.sqrt(self.pos[:,0]**2 + self.pos[:,1]**2 + self.pos[:,2]**2)
 
         theta = np.arcsin(self.pos[:,2]/r)
@@ -217,7 +218,7 @@ class Kinematics:
 
         """
 
-
+        """        
         if 'xyz' and 'vxyz' in kwargs:
             xyz = kwargs['xyz']
             vxyz = kwargs['vxyz']
@@ -229,7 +230,8 @@ class Kinematics:
         if "LSR" in kwargs:
             vr, v_theta, v_phi = self.vel_cartesian_to_galactic(xyz=xyz, vxyz=vxyz)
         else:
-            vr, v_theta, v_phi = self.vel_cartesian_to_spherical(xyz=xyz, vxyz=vxyz)
+        """
+        vr, v_theta, v_phi = self.vel_cartesian_to_spherical()
 
 
         sigma_r = np.std(vr)
@@ -338,6 +340,7 @@ class Kinematics:
 
         dr = np.linspace(rmin, rmax, nbins)
         dr += (dr[1] - dr[0])/2.
+        self.dr = dr[:-1]
 
         if ((quantity == 'dispersions') | (quantity == 'mean')):
             vr_q_r = np.zeros(len(dr)-1)
@@ -349,13 +352,16 @@ class Kinematics:
 
         for i in range(len(dr)-1):
             index = np.where((r<dr[i+1]) & (r>dr[i]))[0]
+            # TODO this might induce bugs else where! 
+            self.pos = xyz[index]
+            self.vel = vxyz[index]
 
             if quantity == 'dispersions':
-                vr_q_r[i], vtheta_q_r[i], vphi_q_r[i] = self.velocity_dispersion(xyz=xyz[index], vxyz=vxyz[index])
+                vr_q_r[i], vtheta_q_r[i], vphi_q_r[i] = self.velocity_dispersion()
             elif quantity == 'mean':
-                vr_q_r[i], vtheta_q_r[i], vphi_q_r[i] = self.velocities_means(xyz=xyz[index], vxyz=vxyz[index])
+                vr_q_r[i], vtheta_q_r[i], vphi_q_r[i] = self.velocities_means()
             elif quantity == 'beta':
-                beta_dr[i] = self.beta(xyz=xyz[index], vxyz=vxyz[index])
+                beta_dr[i] = self.beta()
 
         if quantity == 'beta':
             return beta_dr
