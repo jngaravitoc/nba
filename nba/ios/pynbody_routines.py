@@ -8,6 +8,7 @@ author: Nico Garavito-Camargo
 github: jngaravitoc
 
 """
+import numpy as np
 from nba import requires_library
 
 @requires_library("pynbody")

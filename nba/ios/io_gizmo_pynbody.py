@@ -414,11 +414,11 @@ class FIRE:
       #"""
       #Get satellites info from snap 300 to 600
       #"""
-      m12_subhalos = halo.io.IO.read_catalogs('index', 300, self.sim_directory)
-      halt = halo.io.IO.read_tree(simulation_directory=self.sim_directory)
-      hsub = pr.pynbody_subhalos(m12_subhalos)
-      sat_id = np.argsort(hsub.dark['mass'])[mass_rank]
-      sat_tree_id = m12_subhalos['tree.index'][sat_id]
-      satellite = return_tracked_pos(halt, sat_tree_id, pynbody_halo=True)
-      return satellite
+      #m12_subhalos = halo.io.IO.read_catalogs('index', 300, self.sim_directory)
+      #halt = halo.io.IO.read_tree(simulation_directory=self.sim_directory)
+      #hsub = pr.pynbody_subhalos(m12_subhalos)
+      #sat_id = np.argsort(hsub.dark['mass'])[mass_rank]
+      #sat_tree_id = m12_subhalos['tree.index'][sat_id]
+      #satellite = return_tracked_pos(halt, sat_tree_id, pynbody_halo=True)
+      #return satellite
 """
