@@ -411,9 +411,9 @@ class FIRE:
   
 
   def get_halo_satellite(self, mass_rank):
-      """
-      Get satellites info from snap 300 to 600
-      """
+      #"""
+      #Get satellites info from snap 300 to 600
+      #"""
       m12_subhalos = halo.io.IO.read_catalogs('index', 300, self.sim_directory)
       halt = halo.io.IO.read_tree(simulation_directory=self.sim_directory)
       hsub = pr.pynbody_subhalos(m12_subhalos)
