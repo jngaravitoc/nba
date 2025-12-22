@@ -1,20 +1,25 @@
 import numpy as np
 from scipy.interpolate import BSpline, splrep
 
-
 class Profiles:
     """
-    Initialize the profile calculator.
+    Compute spherically averaged radial profiles from particle data.
 
-    Parameters
-    ----------
-    pos : array_like, shape (N, 3)
-        Cartesian positions of particles.
-    edges : array_like
-        Radial bin edges.
+    This class provides utilities to compute density, enclosed mass,
+    and potential-related radial profiles from particle positions.
     """
 
     def __init__(self, pos, edges):
+        """
+        Initialize the profile calculator.
+
+        Parameters
+        ----------
+        pos : array_like, shape (N, 3)
+            Cartesian positions of particles.
+        edges : array_like
+            Radial bin edges.
+        """
         self.pos = np.asarray(pos)
         self.edges = np.asarray(edges)
 
@@ -133,5 +138,3 @@ class Profiles:
             mass_profile[j] = np.sum(mass[index])
         
         return  dr[:-1] + delta_r, mass_profile
-
-
