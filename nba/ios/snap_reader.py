@@ -367,7 +367,11 @@ class ReadSheng24:
         if 'pid' not in quantity:
             quantity.append('pid')
 
-        snap = ReadGadgetSim(self.path, self.snapname)
+		# Check if mass is in quantity
+    	if ptype == 'dm' and 'mass' not in quantity:
+            quantity.append('mass')    
+	
+	    snap = ReadGadgetSim(self.path, self.snapname)
         particle_data = snap.read_snapshot(quantity=quantity, ptype=ptype)
 
         if ptype == 'dm':
