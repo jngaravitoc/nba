@@ -72,20 +72,14 @@ class Profiles:
         return r_centers, dens
 
 
-    def potential(self, pot, nbins, rmin, rmax):
+    def potential(self, particle_potential):
         """
-        Compute a radial profile of summed particle potential.
+        Compute a radial profile of summed particle potential per shell.
 
         Parameters
         ----------
-        particle_potential : array_like
+        particle_potential : array_like, shape (N,)
             Per-particle potential values.
-        nbins : int
-            Number of radial bins.
-        rmin : float
-            Minimum radius.
-        rmax : float
-            Maximum radius.
 
         Returns
         -------
@@ -94,47 +88,47 @@ class Profiles:
         pot_profile : ndarray
             Sum of particle potentials in each radial shell.
         """
+        particle_potential = np.asarray(particle_potential)
+        if particle_potential.shape[0] != self.pos.shape[0]:
+            raise ValueError("particle_potential must have length N.")
 
-        r_p = np.sqrt(np.sum(self.pos**2, axis=1))
-        pot_profile = np.zeros(nbins-1)
-        dr = np.linspace(rmin, rmax, nbins)
-        delta_r = (dr[2]-dr[1])*0.5
+        r = np.linalg.norm(self.pos, axis=1)
 
-        for j in range(0, len(dr)-1):
-            index = np.where((r_p < dr[j+1]) & (r_p > dr[j]))[0]
-            pot_profile[j] = np.sum(pot[index])
-        return  dr[:-1] + delta_r, pot_profile
+        pot_profile, _ = np.histogram(
+            r, bins=self.edges, weights=particle_potential
+        )
 
-    def enclosed_mass(self, nbins, rmin, rmax, mass):
+        r_centers = 0.5 * (self.edges[1:] + self.edges[:-1])
+        return r_centers, pot_profile
+
+    def enclosed_mass(self, mass):
         """
         Compute the enclosed mass profile.
 
         Parameters
         ----------
-        nbins : int
-            Number of radial bins.
-        rmin : float
-            Minimum radius.
-        rmax : float
-            Maximum radius.
-        mass : array_like
+        mass : array_like, shape (N,)
             Particle masses.
 
         Returns
         -------
         r_centers : ndarray
             Radial bin centers.
-        mass_profile : ndarray
+        mass_enclosed : ndarray
             Enclosed mass within each radius.
         """
-        
-        r_p = np.sqrt(np.sum(self.pos**2, axis=1))
-        mass_profile = np.zeros(nbins-1)
-        dr = np.linspace(rmin, rmax, nbins)
-        delta_r = (dr[2]-dr[1])*0.5
-        
-        for j in range(0, len(dr)-1):
-            index = np.where((r_p < dr[j+1]))[0]
-            mass_profile[j] = np.sum(mass[index])
-        
-        return  dr[:-1] + delta_r, mass_profile
+        mass = np.asarray(mass)
+        if mass.shape[0] != self.pos.shape[0]:
+            raise ValueError("mass must have length N.")
+
+        r = np.linalg.norm(self.pos, axis=1)
+
+        shell_mass, _ = np.histogram(
+            r, bins=self.edges, weights=mass
+        )
+
+        mass_enclosed = np.cumsum(shell_mass)
+        r_centers = 0.5 * (self.edges[1:] + self.edges[:-1])
+
+        return r_centers, mass_enclosed
+

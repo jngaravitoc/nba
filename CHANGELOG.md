@@ -2,9 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.1.1] - 2025-12-22
+## [1.2] - 2025-12-22
 ### Added
 - Included functionality to read Sheng+24 data
+- Added 3D grid generation functionality as part of utils
 
 ## [1.1] - 2025-05-31
 ### Added 
