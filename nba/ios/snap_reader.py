@@ -334,7 +334,7 @@ class ReadSheng24:
 
         return mw_ids, lmc_ids
 
-    def read_particles(self, quantity, ptype, halo=None, randomsample=None):
+    def read_halo(self, quantity, halo, ptype, randomsample=None):
         """
         Read particle data from the snapshot, optionally filtering by halo.
 
