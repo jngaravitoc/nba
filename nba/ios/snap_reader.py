@@ -334,7 +334,7 @@ class ReadSheng24:
 
         return mw_ids, lmc_ids
 
-    def read_particles(self, quantity, halo, ptype, randomsample=None):
+    def read_particles(self, quantity, ptype, halo=None, randomsample=None):
         """
         Read particle data from the snapshot, optionally filtering by halo.
 
@@ -342,10 +342,10 @@ class ReadSheng24:
         ----------
         quantity : str or sequence of str
             Particle quantities to read (e.g., ``'pos'``, ``'vel'``, ``'mass'``).
-        halo : {'MW', 'LMC'}
-            Halo component to select (only applied for ``ptype='dm'``).
         ptype : str
             Particle type (e.g., ``'dm'``, ``'gas'``, ``'star'``).
+        halo : {'MW', 'LMC'}
+            Halo component to select (only applied for ``ptype='dm'``).
         randomsample : int or None, optional
             Random subsampling size (not implemented).
 

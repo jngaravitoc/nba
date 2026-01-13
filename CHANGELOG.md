@@ -6,6 +6,9 @@ All notable changes to this project will be documented in this file.
 ### Added
 - Included functionality to read Sheng+24 data
 - Added 3D grid generation functionality as part of utils
+### Fixed:
+- Consistent binning strategy in Profile for enclosed mass, potential, and
+  density 
 
 ## [1.1] - 2025-05-31
 ### Added 

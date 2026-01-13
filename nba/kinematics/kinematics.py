@@ -122,7 +122,6 @@ class Kinematics:
         return v_r, v_theta, v_phi
 
 
-
     def orbpole(self):
         # Hacked from Ekta's code
         # r x v in cartesian coordinates!
@@ -256,7 +255,7 @@ class Kinematics:
                   for spherical :
         v_phi : np.array with azimuthal velocities.
         """
-        if 'xyz' and 'vxyz' in kwargs:
+        if 'xyz' in kwargs and 'vxyz' in kwargs:
             xyz = kwargs['xyz']
             vxyz = kwargs['vxyz']
 
@@ -288,7 +287,7 @@ class Kinematics:
         """
 
         # This doesn't seem to be the best way of doing this. But it works!
-        if 'xyz' and 'vxyz' in kwargs:
+        if 'xyz' in kwargs and 'vxyz' in kwargs:
             xyz = kwargs['xyz']
             vxyz = kwargs['vxyz']
 
@@ -328,8 +327,7 @@ class Kinematics:
         vmean_phi : numpy array
 
         """
-
-        if 'xyz' and 'vxyz' in kwargs:
+        if 'xyz' in kwargs and 'vxyz' in kwargs:
             xyz = kwargs['xyz']
             vxyz = kwargs['vxyz']
             r = np.sqrt(xyz[:,0]**2+xyz[:,1]**2+xyz[:,2]**2)
@@ -432,7 +430,7 @@ class Kinematics:
         elif quantity == 'beta':
             return beta
 
-    def slice_NN(self, xbins, ybins, n_n, d_slice, quantity,\
+    def slice_NN(self, lbins, lbins, n_n, d_slice, quantity,\
                           relative=False, LSR=False, **kwargs):
 
         """
