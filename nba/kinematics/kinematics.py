@@ -356,7 +356,8 @@ class Kinematics:
         pos_all, vel_all = self.pos, self.vel
         try:
             for i in range(len(edges)-1):
-                index = np.where((r >= edges[i]) & (r < edges[i+1]))[0]
+                upper = r <= edges[i + 1] if i == len(edges) - 2 else r < edges[i + 1]
+                index = np.where((r >= edges[i]) & upper)[0]
                 self.pos = xyz[index]
                 self.vel = vxyz[index]
 
