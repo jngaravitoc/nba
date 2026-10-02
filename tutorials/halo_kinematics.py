@@ -54,7 +54,7 @@ if __name__ == "__main__":
         com[i], vcom[i] = center.shrinking_sphere_numba()
         center.recenter(com[i], vcom[i])
 
-        # Kinematics. Kinematics.profiles overwrites pos/vel, so use a fresh object per quantity.
+        # Kinematics (nbins + 1 edges, i.e. the same radial grid as Profiles below)
         ang_mom[i] = Kinematics(halo['pos'], halo['vel']).total_angular_momentum()
         beta[i] = Kinematics(halo['pos'], halo['vel']).profiles(
             nbins=args.nbins + 1, quantity="beta", rmin=args.rmin, rmax=args.rmax)

@@ -15,6 +15,9 @@ All notable changes to this project will be documented in this file.
 - Packaging: dynamic version in `pyproject.toml`; numba and scikit-learn are core dependencies
 - CI installs the package, runs on `devel` and pull requests, and no longer fails without tests
 - Tutorial scripts and notebooks updated to the current API
+- `Kinematics.profiles` bins now match `nba.structure.Profiles` (they were offset by half a bin and
+  extended past `rmax`); `Kinematics.dr` holds the bin centers and `profiles` no longer overwrites
+  `pos`/`vel`
 ### Removed
 - Non-working modules moved to `legacy/` (not installed)
 - Cell outputs stripped from tutorial notebooks
