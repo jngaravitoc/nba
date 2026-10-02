@@ -44,6 +44,8 @@ def orbit(path, snapname, snapshots, halo="MW", com_method="shrinking",
     """
     if com_method not in COM_METHODS:
         raise ValueError(f"com_method must be one of {COM_METHODS}")
+    if halo not in ("MW", "LMC"):
+        raise ValueError("halo must be one of ('MW', 'LMC')")
     if com_method == "diskpot" and halo != "MW":
         raise ValueError("com_method='diskpot' is only available for halo='MW'")
 
