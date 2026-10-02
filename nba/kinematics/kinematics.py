@@ -311,8 +311,9 @@ class Kinematics:
 
         Parameters:
         ----------
-        n_bins : int
-            Number of radial bins to compute the velocity dispersions.
+        nbins : int
+            Number of radial bin edges (``nbins - 1`` bins), uniformly spaced
+            between rmin and rmax. The bin centers are stored in ``self.dr``.
         quanity: string
             Compute a kinematic quantity (dispersions, mean, beta)
         rmin : int
@@ -336,30 +337,38 @@ class Kinematics:
             vxyz = self.vel
             r = self.r
 
-        dr = np.linspace(rmin, rmax, nbins)
-        dr += (dr[1] - dr[0])/2.
-        self.dr = dr[:-1]
+        # Radial bin edges: nbins edges define nbins-1 bins, the same grid as
+        # nba.structure.Profiles(pos, edges=np.linspace(rmin, rmax, nbins)).
+        edges = np.linspace(rmin, rmax, nbins)
+        self.edges = edges
+        self.dr = 0.5 * (edges[1:] + edges[:-1])  # bin centers
 
         if ((quantity == 'dispersions') | (quantity == 'mean')):
-            vr_q_r = np.zeros(len(dr)-1)
-            vtheta_q_r = np.zeros(len(dr)-1)
-            vphi_q_r = np.zeros(len(dr)-1)
+            vr_q_r = np.zeros(len(edges)-1)
+            vtheta_q_r = np.zeros(len(edges)-1)
+            vphi_q_r = np.zeros(len(edges)-1)
 
         elif quantity == 'beta':
-            beta_dr = np.zeros(len(dr)-1)
+            beta_dr = np.zeros(len(edges)-1)
 
-        for i in range(len(dr)-1):
-            index = np.where((r<dr[i+1]) & (r>dr[i]))[0]
-            # TODO this might induce bugs else where! 
-            self.pos = xyz[index]
-            self.vel = vxyz[index]
+        # The per-bin calculations below read self.pos/self.vel, so they are
+        # swapped temporarily and restored at the end.
+        pos_all, vel_all = self.pos, self.vel
+        try:
+            for i in range(len(edges)-1):
+                upper = r <= edges[i + 1] if i == len(edges) - 2 else r < edges[i + 1]
+                index = np.where((r >= edges[i]) & upper)[0]
+                self.pos = xyz[index]
+                self.vel = vxyz[index]
 
-            if quantity == 'dispersions':
-                vr_q_r[i], vtheta_q_r[i], vphi_q_r[i] = self.velocity_dispersion()
-            elif quantity == 'mean':
-                vr_q_r[i], vtheta_q_r[i], vphi_q_r[i] = self.velocities_means()
-            elif quantity == 'beta':
-                beta_dr[i] = self.beta()
+                if quantity == 'dispersions':
+                    vr_q_r[i], vtheta_q_r[i], vphi_q_r[i] = self.velocity_dispersion()
+                elif quantity == 'mean':
+                    vr_q_r[i], vtheta_q_r[i], vphi_q_r[i] = self.velocities_means()
+                elif quantity == 'beta':
+                    beta_dr[i] = self.beta()
+        finally:
+            self.pos, self.vel = pos_all, vel_all
 
         if quantity == 'beta':
             return beta_dr
@@ -430,7 +439,7 @@ class Kinematics:
         elif quantity == 'beta':
             return beta
 
-    def slice_NN(self, lbins, lbins, n_n, d_slice, quantity,\
+    def slice_NN(self, lbins, bbins, n_n, d_slice, quantity,\
                           relative=False, LSR=False, **kwargs):
 
         """
@@ -484,6 +493,7 @@ class Kinematics:
 
         # Finding the NN.
         k = 0
+        from sklearn.neighbors import NearestNeighbors
         neigh = NearestNeighbors(n_neighbors=n_n, radius=1, algorithm='ball_tree')
         ngbrs = neigh.fit(xyz)
 
@@ -599,6 +609,7 @@ class Kinematics:
 
         # Finding the NN.
         k = 0
+        from sklearn.neighbors import NearestNeighbors
         neigh = NearestNeighbors(n_neighbors=n_n, radius=1, algorithm='ball_tree')
         ngbrs = neigh.fit(xyz)
 

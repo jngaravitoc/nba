@@ -1,118 +1,72 @@
 """
-Script to compute halo kinematics fnd structure from Gadget4 outputs.
+Compute the center of mass, angular momentum, anisotropy, density and enclosed
+mass profiles of a DM halo from a sequence of Gadget-4 snapshots.
 
-Usage : python3 halo_kinematics.py snap_path out_name 
-
+Usage:
+    python halo_kinematics.py /path/to/snapshots LMC5_15M_vir_eps_100pc_ics2_{:03d}.hdf5 out_name \
+        --init 0 --final 500 --step 100
 """
+from argparse import ArgumentParser
 
 import numpy as np
-import sys
-sys.path.append("../src/")
-from read_snap import load_snapshot
-import shrinking_sphere as ssphere
-from kinematics import Kinematics
-from structure import Structure
 
-
-
-# Define variables 
+from nba.com import CenterHalo
+from nba.ios import ReadGadgetSim
+from nba.kinematics import Kinematics
+from nba.structure import Profiles
 
 if __name__ == "__main__":
-	snapshot = "/mnt/ceph/users/nico/HQ_iso_halo/iso_softening_100pc/LMC5_15M_vir_eps_100pc_ics2"
-	out_name = "LMC5_15M_vir_eps_100pc"
-	init_snap = 0
-	final_snap = 500
-	snap_format = 3 # gadget4 - hdf5
-	nsnaps = final_snap - init_snap + 1
-	dsnaps = 100 # skips snapshots
-	
-	# Profile properties
-	nbins = 101
-	rmin = 0
-	rmax = 120
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument("path", help="Directory with the snapshots")
+    parser.add_argument("snapname", help="Snapshot name with a format field for the snapshot number")
+    parser.add_argument("out_name", help="Prefix of the output files")
+    parser.add_argument("--init", type=int, default=0)
+    parser.add_argument("--final", type=int, default=0)
+    parser.add_argument("--step", type=int, default=1, help="Snapshot stride")
+    parser.add_argument("--nbins", type=int, default=100, help="Number of radial bins")
+    parser.add_argument("--rmin", type=float, default=0.0)
+    parser.add_argument("--rmax", type=float, default=120.0)
+    parser.add_argument("--nsample", type=int, default=None,
+                        help="Randomly sub-sample this many particles (faster)")
+    args = parser.parse_args()
 
-	# Halo properties:
-	angular_momentum = True
-	com = True
-	shrinking_sphere = False
-	beta_profile = True
-	mass_profile = True
-	density_profile = True
-	potential_profile = False
-	enclosed_mass = True
-	
-	ntotal = int(nsnaps/dsnaps) + 1
-	# initialize arrays
-	halo_com = np.zeros((ntotal, 3))
-	halo_vcom = np.zeros((ntotal, 3))
-	halo_in_com = np.zeros((ntotal, 3))
-	halo_in_vcom = np.zeros((ntotal, 3))
-	Lx = np.zeros(ntotal)
-	Ly = np.zeros(ntotal)
-	Lz = np.zeros(ntotal)
-	beta_halo = np.zeros((ntotal, nbins-1))
-	dens_profile = np.zeros((ntotal, nbins-1))
-	pot_profile = np.zeros((ntotal, nbins-1))
-	encl_mass  = np.zeros((ntotal, nbins-1))
+    snapshots = list(range(args.init, args.final + 1, args.step))
+    edges = np.linspace(args.rmin, args.rmax, args.nbins + 1)
+    rng = np.random.default_rng(0)
 
-	r = np.linspace(rmin, rmax, nbins-1)
-	# Load snaphots 
+    com = np.zeros((len(snapshots), 3))
+    vcom = np.zeros((len(snapshots), 3))
+    ang_mom = np.zeros((len(snapshots), 3))
+    beta = np.zeros((len(snapshots), args.nbins))
+    density = np.zeros((len(snapshots), args.nbins))
+    enclosed = np.zeros((len(snapshots), args.nbins))
 
-	ns = 0
-	for k in range(init_snap, final_snap+1, dsnaps):
-		print('Loading snapshot \n')
-		pos, vel, mass = load_snapshot(snapshot+"_{:03d}.hdf5".format(k), snap_format)
-	
-		# Compute COM
-		if com == True:
-			print('Computing COM \n')
-			halo_com[ns], halo_vcom[ns] = ssphere.com(pos, vel, mass)
-		if shrinking_sphere == True:
-			print('Computing COM with shrinking sphere method \n')
-			halo_in_com[ns], halo_in_vcom[ns] = ssphere.shrinking_sphere(pos, vel, mass, r_init=300)
-			print('Done computing COM \n')
-		
-		# Halo kinematics
-		halo_kin = Kinematics(pos, vel)
+    for i, k in enumerate(snapshots):
+        print(f"Loading snapshot {k}")
+        reader = ReadGadgetSim(args.path, args.snapname.format(k))
+        halo = reader.read_snapshot(['pos', 'vel', 'mass'], ptype='dm')
+        if args.nsample is not None:
+            idx = rng.choice(len(halo['mass']), size=args.nsample, replace=False)
+            halo = {key: value[idx] for key, value in halo.items()}
 
-		if angular_momentum == True:
-			print('Computing angular momentum \n')
-			Lx[ns], Ly[ns], Lz[ns] = halo_kin.total_angular_momentum()
-		
-		if beta_profile == True:
-			print('Computing anisotropy profile \n')
-			beta_halo[ns] = halo_kin.profiles(nbins=nbins, quantity="beta", rmin=rmin, rmax=rmax)
+        # Center the halo on its shrinking-sphere center of mass
+        center = CenterHalo(halo)
+        com[i], vcom[i] = center.shrinking_sphere_numba()
+        center.recenter(com[i], vcom[i])
 
-		# Halo structure
-		halo_structure = Structure(pos, mass)
+        # Kinematics (nbins + 1 edges, i.e. the same radial grid as Profiles below)
+        ang_mom[i] = Kinematics(halo['pos'], halo['vel']).total_angular_momentum()
+        beta[i] = Kinematics(halo['pos'], halo['vel']).profiles(
+            nbins=args.nbins + 1, quantity="beta", rmin=args.rmin, rmax=args.rmax)
 
-		if enclosed_mass == True:
-			encl_mass[ns] = halo_structure.enclosed_mass(mass, nbins, rmin, rmax)
+        # Structure
+        profiles = Profiles(halo['pos'], edges)
+        r_centers, density[i] = profiles.density(mass=halo['mass'])
+        _, enclosed[i] = profiles.enclosed_mass(halo['mass'])
 
-		if density_profile == True:
-			dens_profile[ns] = halo_structure.density_profile(nbins, rmin, rmax)
-			
-		if potential_profile == True:
-			pot_profile[ns] = halo_structure.potential_profile(nbins, rmin, rmax)
-
-		ns+=1
-	# Save data
-	if ((com == True) | (shrinking_sphere == True)):
-		np.savetxt(out_name+"_com.txt", np.array([halo_com[:,0], halo_com[:,1], halo_com[:,2],
-												halo_vcom[:,0], halo_vcom[:,1], halo_vcom[:,2],
-												halo_in_com[:,0], halo_in_com[:,1], halo_in_com[:,2],
-												halo_in_vcom[:,0],halo_in_vcom[:,1], halo_in_com[:,2]]).T)
-
-	if angular_momentum == True:
-		np.savetxt(out_name+"_kinematics.txt", np.array([Lx, Ly, Lz]).T)
-	if beta_profile == True:
-		np.savetxt(out_name+"_beta.txt", beta_halo)
-
-	if enclosed_mass == True:
-		np.savetxt(out_name+"_encl_mass.txt", encl_mass)
-
-	if density_profile == True:
-		np.savetxt(out_name+"_dens_profile.txt", dens_profile)
-
-	if potential_profile == True:	
-		np.savetxt(out_name+"_pot_profile.txt", pot_profile)
+    np.savetxt(args.out_name + "_com.txt", np.hstack([com, vcom]))
+    np.savetxt(args.out_name + "_angular_momentum.txt", ang_mom)
+    np.savetxt(args.out_name + "_beta.txt", beta)
+    np.savetxt(args.out_name + "_dens_profile.txt", density)
+    np.savetxt(args.out_name + "_encl_mass.txt", enclosed)
+    np.savetxt(args.out_name + "_radii.txt", r_centers)
