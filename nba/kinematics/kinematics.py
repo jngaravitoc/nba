@@ -430,7 +430,7 @@ class Kinematics:
         elif quantity == 'beta':
             return beta
 
-    def slice_NN(self, lbins, lbins, n_n, d_slice, quantity,\
+    def slice_NN(self, lbins, bbins, n_n, d_slice, quantity,\
                           relative=False, LSR=False, **kwargs):
 
         """
@@ -484,6 +484,7 @@ class Kinematics:
 
         # Finding the NN.
         k = 0
+        from sklearn.neighbors import NearestNeighbors
         neigh = NearestNeighbors(n_neighbors=n_n, radius=1, algorithm='ball_tree')
         ngbrs = neigh.fit(xyz)
 
@@ -599,6 +600,7 @@ class Kinematics:
 
         # Finding the NN.
         k = 0
+        from sklearn.neighbors import NearestNeighbors
         neigh = NearestNeighbors(n_neighbors=n_n, radius=1, algorithm='ball_tree')
         ngbrs = neigh.fit(xyz)
 

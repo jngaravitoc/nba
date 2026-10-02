@@ -1,1 +1,1 @@
-from .vis import Visuals
+"""Plotting routines. Import `nba.visuals.plotting` explicitly (requires healpy and pynbody)."""

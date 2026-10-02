@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
+*.egg
+nba_env/
+.ipynb_checkpoints/
+data/
+*.code-workspace
