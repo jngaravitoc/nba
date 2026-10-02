@@ -1,23 +1,31 @@
+"""
+Compute the orbits of the MW and the LMC center of mass from a sequence of
+GC21 snapshots.
+
+Usage:
+    python compute_orbit.py /path/to/snapshots --init 0 --final 10
+"""
+from argparse import ArgumentParser
+
 import numpy as np
+
 from nba.orbits import orbit
 
 if __name__ == "__main__":
-    snapshot = "/mnt/home/nico/ceph/gadget_runs/MWLMC/MWLMC5/out/"
-    out_name = 'MWLMC5_100M_b0_vir_OM3_G4'
-    init_snap = 0 
-    final_snap = 10 
-    snap_format = 3 # gadget4 - hdf5
-    com_method1 = 'shrinking'
-    com_method2 = 'diskpot'
-    nhost=100000000
-    nsat=15000000
-    orbit_name = "orbit_mwlmc5.txt"
-    pos_com_host, vel_com_host = orbit(snapshot+out_name, init_snap, final_snap, 0, 0, [nhost, nsat], snap_format, com_method2)
-    pos_com_sat, vel_com_sat = orbit(snapshot+out_name, init_snap, final_snap, 1, 1, [nhost, nsat], snap_format, com_method1)
-    
-    # Save data
-    np.savetxt(orbit_name, np.array([pos_com_host[:,0], pos_com_host[:,1], pos_com_host[:,2],
-                				   vel_com_host[:,0], vel_com_host[:,1], vel_com_host[:,2],
-                            	   pos_com_sat[:,0], pos_com_sat[:,1], pos_com_sat[:,2],
-                                   vel_com_sat[:,0], vel_com_sat[:,1], vel_com_sat[:,2]]).T)
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument("path", help="Directory with the snapshots")
+    parser.add_argument("--snapname", default="MWLMC5_100M_b0_vir_OM3_G4_{:03d}.hdf5",
+                        help="Snapshot name with a format field for the snapshot number")
+    parser.add_argument("--init", type=int, default=0)
+    parser.add_argument("--final", type=int, default=10)
+    parser.add_argument("--out", default="orbit_mwlmc5.txt")
+    args = parser.parse_args()
 
+    snapshots = range(args.init, args.final + 1)
+
+    # The MW is centered on the disk potential minimum, the LMC with a shrinking sphere.
+    pos_host, vel_host = orbit(args.path, args.snapname, snapshots, halo="MW", com_method="diskpot")
+    pos_sat, vel_sat = orbit(args.path, args.snapname, snapshots, halo="LMC", com_method="shrinking")
+
+    # Columns: MW (x, y, z, vx, vy, vz), LMC (x, y, z, vx, vy, vz)
+    np.savetxt(args.out, np.hstack([pos_host, vel_host, pos_sat, vel_sat]))

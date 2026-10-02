@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+### Added
+- Test suite (`tests/`) and flake8 configuration
+- `nba.orbits.orbit` rewritten on top of `ReadGC21` and `CenterHalo`
+- `nba.visuals.mollweide` (HEALPix density maps and Mollweide plots)
+- `__version__` in `nba/__init__.py`
+- `.gitignore`
+### Fixed
+- `nba.kinematics` (duplicate argument in `slice_NN`) and `nba.cosmology`
+  (class was commented out) can be imported again
+- Packaging: dynamic version in `pyproject.toml`; numba and scikit-learn are core dependencies
+- CI installs the package, runs on `devel` and pull requests, and no longer fails without tests
+- Tutorial scripts and notebooks updated to the current API
+### Removed
+- Non-working modules moved to `legacy/` (not installed)
+- Cell outputs stripped from tutorial notebooks
+
 ## [1.2] - 2025-12-22
 ### Added
 - Included functionality to read Sheng+24 data
