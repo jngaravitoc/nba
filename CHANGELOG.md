@@ -8,7 +8,11 @@ Versions before 0.3.0 were originally numbered 1.0.1, 1.1 and 1.2; they were ren
 ## [0.3.0] - 2026-10-02
 ### Added
 - Test suite (`tests/`) and flake8 configuration
-- `nba.orbits.orbit` rewritten on top of `ReadGC21` and `CenterHalo`
+- `nba.orbits.orbit` rewritten on top of `ReadGC21` and `CenterHalo`; it accepts several centering
+  methods at once, and `nba.orbits.iter_orbit` yields the centers snapshot by snapshot (each
+  snapshot is read once)
+- `tutorials/compute_lmc_orbits.py` and `tutorials/lmc_centering.ipynb` to compare the centering
+  methods on the LMC
 - `nba.visuals.mollweide` (HEALPix density maps and Mollweide plots)
 - `__version__` in `nba/__init__.py`
 - `.gitignore`
