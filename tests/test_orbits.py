@@ -7,6 +7,8 @@ from nba.orbits import iter_orbit, orbit
 N = 5000
 CENTERS = [np.array([1.0, 2.0, 3.0]), np.array([2.0, 3.0, 4.0])]
 VEL = np.array([5.0, 0.0, -5.0])
+# The test halos are unit Gaussians, i.e. cored: stop the shrinking sphere at r = 4 * SOFTENING = 1
+SOFTENING = 0.25
 
 
 def write_snap(path, center):
@@ -34,7 +36,8 @@ def snaps(tmp_path):
 @pytest.mark.parametrize("method", ["shrinking", "diskpot", "mean", "mean_pos", "shrinking_sphere",
                                     "shrinking_sphere_numba", "min_potential"])
 def test_orbit_recovers_centers(snaps, method):
-    pos, vel = orbit(snaps, "sim_{:03d}.hdf5", [0, 1], halo="MW", com_method=method)
+    pos, vel = orbit(snaps, "sim_{:03d}.hdf5", [0, 1], halo="MW", com_method=method,
+                     softening=SOFTENING)
     assert pos.shape == vel.shape == (2, 3)
     np.testing.assert_allclose(pos, CENTERS, atol=0.3)
     np.testing.assert_allclose(vel, [VEL, VEL], atol=0.3)
@@ -42,7 +45,8 @@ def test_orbit_recovers_centers(snaps, method):
 
 def test_orbit_several_methods(snaps):
     methods = ["mean_pos", "shrinking_sphere", "shrinking_sphere_numba", "min_potential"]
-    result = orbit(snaps, "sim_{:03d}.hdf5", [0, 1], halo="MW", com_method=methods)
+    result = orbit(snaps, "sim_{:03d}.hdf5", [0, 1], halo="MW", com_method=methods,
+                    softening=SOFTENING)
     assert list(result) == methods
     for pos, vel in result.values():
         np.testing.assert_allclose(pos, CENTERS, atol=0.3)
@@ -76,3 +80,23 @@ def test_orbit_invalid_method(snaps):
 def test_diskpot_requires_mw(snaps):
     with pytest.raises(ValueError):
         orbit(snaps, "sim_{:03d}.hdf5", [0], halo="LMC", com_method="diskpot")
+
+
+@pytest.mark.parametrize("method", ["shrinking_sphere", "shrinking_sphere_numba"])
+def test_orbit_tracks_previous_center(snaps, method, monkeypatch):
+    from nba.com import CenterHalo
+
+    starts = []
+    original = getattr(CenterHalo, method)
+
+    def recording(self, *args, center0=None, r0=None, **kwargs):
+        starts.append((None if center0 is None else center0.copy(), r0))
+        return original(self, *args, center0=center0, r0=r0, **kwargs)
+
+    monkeypatch.setattr(CenterHalo, method, recording)
+    pos, _ = orbit(snaps, "sim_{:03d}.hdf5", [0, 1], halo="MW", com_method=method, r0=5.0,
+                   softening=SOFTENING)
+    np.testing.assert_allclose(pos, CENTERS, atol=0.3)
+    assert starts[0] == (None, None)  # first snapshot: all particles
+    np.testing.assert_allclose(starts[1][0], pos[0])  # then the previous center
+    assert starts[1][1] == 5.0
