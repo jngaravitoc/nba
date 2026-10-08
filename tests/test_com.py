@@ -183,13 +183,14 @@ def test_recenter_copy(halo):
 
 
 def test_float32_accumulates_in_float64():
-    # 2**24 + 1 is not representable in float32: a float32 running sum stalls
-    n = 2**24 + 1000
-    pos = np.full((n, 3), 1.0, dtype=np.float32)
-    pos[0] = 1001.0
-    com, _ = CenterHalo({"pos": pos, "vel": pos, "mass": np.ones(n, dtype=np.float32)}).mean_pos()
+    # In float32, 1e8 + 1 rounds back to 1e8, so a float32 sum gives 0 instead of 1/3
+    values = np.array([[1e8, 1e8, 1e8],
+                       [1.0, 1.0, 1.0],
+                       [-1e8, -1e8, -1e8]], dtype=np.float32)
+    mass = np.ones(3, dtype=np.float32)
+    com, _ = CenterHalo({"pos": values, "vel": values, "mass": mass}).mean_pos()
     assert com.dtype == np.float64
-    np.testing.assert_allclose(com, 1.0 + 1000.0 / n, rtol=1e-12)
+    np.testing.assert_allclose(com, np.full(3, 1.0 / 3.0), rtol=1e-12)
 
 
 @pytest.mark.parametrize("method", ["shrinking_sphere", "shrinking_sphere_numba"])
