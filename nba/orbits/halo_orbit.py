@@ -23,20 +23,25 @@ def _method_name(method):
     return name
 
 
-def _center(data, method, rcut_pot, rcut_vel):
-    """Apply one of the CenterHalo methods to the particles in `data`."""
+def _center(data, method, rcut_pot, rcut_vel, center0=None, r0=None, softening=None):
+    """
+    Apply one of the CenterHalo methods to the particles in `data`.
+    `center0`, `r0` and `softening` are passed to the shrinking sphere methods.
+    """
     center = CenterHalo(data)
     if method == "mean_pos":
         return center.mean_pos()
     if method == "shrinking_sphere":
-        return center.shrinking_sphere(rcut_vel=rcut_vel)
+        return center.shrinking_sphere(rcut_vel=rcut_vel, center0=center0, r0=r0,
+                                       softening=softening)
     if method == "shrinking_sphere_numba":
-        return center.shrinking_sphere_numba(rcut=rcut_vel)
+        return center.shrinking_sphere_numba(rcut_vel=rcut_vel, center0=center0, r0=r0,
+                                             softening=softening)
     return center.min_potential(rcut=rcut_pot)  # 'min_potential' and 'diskpot'
 
 
 def iter_orbit(path, snapname, snapshots, halo="MW", com_method="shrinking",
-               rcut_pot=2.0, rcut_vel=20.0, randomsample=None):
+               rcut_pot=2.0, rcut_vel=20.0, randomsample=None, r0=None, softening=None):
     """
     Iterate over snapshots computing the center of mass of a halo with one or
     several methods. Each snapshot is read only once, whatever the number of
@@ -71,6 +76,16 @@ def iter_orbit(path, snapname, snapshots, halo="MW", com_method="shrinking",
         Radius used to compute the COM velocity by the shrinking sphere methods.
     randomsample : int or None
         Number of particles randomly drawn from each snapshot.
+    r0 : float or None
+        If given, the shrinking sphere methods start each snapshot from a
+        sphere of radius `r0` around the center they found in the previous
+        snapshot (the first snapshot uses all particles). This keeps the
+        sphere on the halo when another halo or its debris overlaps it.
+        Snapshots should then be consecutive enough that the halo moves
+        less than `r0` between them.
+    softening : float or None
+        Softening length of the halo particles. The shrinking sphere methods
+        do not shrink below 4 * softening.
 
     Yields
     ------
@@ -91,6 +106,7 @@ def iter_orbit(path, snapname, snapshots, halo="MW", com_method="shrinking",
     use_dm = any(name != "diskpot" for name in names.values())
     quantities = ['pos', 'vel', 'mass'] + (['pot'] if "min_potential" in names.values() else [])
 
+    previous = {}  # center found in the previous snapshot, per method
     for k in snapshots:
         file = snapname.format(k)
         time = ReadGadgetSim(path, file).read_header()["Time"]
@@ -107,12 +123,17 @@ def iter_orbit(path, snapname, snapshots, halo="MW", com_method="shrinking",
         centers = {}
         for method, name in names.items():
             data = disk if name == "diskpot" else dm
-            centers[method] = _center(data, name, rcut_pot, rcut_vel)
+            prev = previous.get(method)
+            centers[method] = _center(data, name, rcut_pot, rcut_vel,
+                                      center0=prev, r0=r0 if prev is not None else None,
+                                      softening=softening)
+        if r0 is not None:
+            previous = {m: c[0] for m, c in centers.items()}
         yield k, float(time), centers
 
 
 def orbit(path, snapname, snapshots, halo="MW", com_method="shrinking",
-          rcut_pot=2.0, rcut_vel=20.0, randomsample=None):
+          rcut_pot=2.0, rcut_vel=20.0, randomsample=None, r0=None, softening=None):
     """
     Compute the center-of-mass position and velocity of a halo for a sequence
     of snapshots. See :func:`iter_orbit` for the parameters.
@@ -133,7 +154,8 @@ def orbit(path, snapname, snapshots, halo="MW", com_method="shrinking",
     vel = {m: np.zeros((len(snapshots), 3)) for m in methods}
 
     steps = iter_orbit(path, snapname, snapshots, halo=halo, com_method=methods,
-                       rcut_pot=rcut_pot, rcut_vel=rcut_vel, randomsample=randomsample)
+                       rcut_pot=rcut_pot, rcut_vel=rcut_vel, randomsample=randomsample,
+                       r0=r0, softening=softening)
     for i, (_, _, centers) in enumerate(steps):
         for m in methods:
             pos[m][i], vel[m][i] = centers[m]
