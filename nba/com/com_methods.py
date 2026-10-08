@@ -26,23 +26,23 @@ def _renamed(kwargs, old, new, value):
 
 def _initial_sphere(xyz, mass, center0=None, r0=None):
     """
-    Starting particles and center for the shrinking sphere. Without `r0` all
-    particles are used; with it, only those within `r0` of `center0` (or of
-    the global center of mass). The start center is the COM of that sphere.
+    Starting center and radius of the shrinking sphere. Without `r0` the
+    sphere is centered on the global center of mass (or `center0`) and
+    encloses all particles. With `r0`, it is the COM of the particles within
+    `r0` of `center0` (or of the global COM), and the radius is `r0`.
     """
-    indices = np.arange(len(mass))
     if center0 is None:
         center0 = _weighted_mean(xyz, mass)
     center0 = np.asarray(center0, dtype=np.float64)
+    r2 = np.sum((xyz - center0)**2, axis=1)
     if r0 is None:
-        return indices, center0
+        return center0, float(np.sqrt(np.max(r2)))
     if r0 <= 0:
         raise ValueError("r0 must be positive")
-    r2 = np.sum((xyz - center0)**2, axis=1)
-    indices = indices[r2 < r0**2]
-    if len(indices) == 0:
+    inside = r2 < r0**2
+    if not np.any(inside):
         raise ValueError(f"No particles found within r0={r0} of center0={center0}")
-    return indices, _weighted_mean(xyz[indices], mass[indices])
+    return _weighted_mean(xyz[inside], mass[inside]), float(r0)
 
 
 # What stopped the shrinking sphere, as returned by the loops
@@ -50,87 +50,143 @@ _STOP_NPART, _STOP_DELTA, _STOP_SOFTENING = 0, 1, 2
 _STOP_NAMES = ("min_npart", "delta", "softening")
 
 
-def _ssphere_loop_numpy(xyz, mass, indices, com_pos, delta, nmin, r2_min):
-    """NumPy version of `_ssphere_kernel`."""
+# The Power et al. (2003) shrinking sphere: at each step the sphere is
+# centered on the last barycentre and its radius reduced by 2.5%, so the
+# radius is radius0 * 0.975**k, and all particles inside it are used,
+# including those that were outside an earlier sphere. The loops stop before
+# the radius drops below sqrt(r2_min) or the sphere holds fewer than `nmin`
+# particles, or when the center moves less than `delta` (no early stop if
+# delta < 0). They return the center, the number of particles and radius of
+# the final sphere, the number of steps and what stopped it (_STOP_* code).
+#
+# To avoid looking at every particle at every step, positions and masses are
+# copied in order of distance from a reference center. A particle inside a
+# sphere of radius R around `c` is within R + |c - ref| of the reference, so
+# each step only reads that leading block of the sorted copies (`prune=False`
+# reads them all and is only used to test that this changes nothing). The
+# reference is reset when the center moves more than R from it.
+
+# Relative margin on the candidate radius, covering rounding in the distances
+_PRUNE_MARGIN = 1e-9
+
+
+def _sort_by_distance(xyz, mass, ref):
+    """Positions, float64 masses and distances from `ref`, sorted by distance."""
+    d2 = np.sum((xyz - ref)**2, axis=1)
+    order = np.argsort(d2)
+    return xyz[order], mass[order].astype(np.float64), np.sqrt(d2[order])
+
+
+def _ssphere_power(xyz, mass, com_pos, radius, delta, nmin, r2_min, prune=True):
+    """NumPy version of the Power et al. shrinking sphere (see the comment above)."""
+    c = np.array(com_pos, dtype=np.float64)
+    ref = c.copy()
+    xs, ms, ds = _sort_by_distance(xyz, mass, ref)
+    npart = np.searchsorted(ds, radius, side="right")
     niter = 0
-    shift = np.inf
-    while shift > delta:
-        r2 = np.sum((xyz[indices] - com_pos)**2, axis=1)
-        r2_cut = np.max(r2) * 0.975**2
-        # Stop before the sphere drops below the minimum radius or number of particles
-        if r2_cut < r2_min:
-            return com_pos, indices, niter, _STOP_SOFTENING
-        mask = r2 < r2_cut
-        if np.count_nonzero(mask) < nmin:
-            return com_pos, indices, niter, _STOP_NPART
-        indices = indices[mask]
-        new_com_pos = _weighted_mean(xyz[indices], mass[indices])
-        shift = np.linalg.norm(new_com_pos - com_pos)
-        com_pos = new_com_pos
+    while True:
+        new_radius = 0.975 * radius
+        if new_radius**2 < r2_min:
+            return c, npart, radius, niter, _STOP_SOFTENING
+
+        drift = np.linalg.norm(c - ref)
+        if drift > new_radius:
+            ref = c.copy()
+            xs, ms, ds = _sort_by_distance(xyz, mass, ref)
+            drift = 0.0
+        n = len(ds)
+        if prune:
+            n = np.searchsorted(ds, (new_radius + drift) * (1 + _PRUNE_MARGIN), side="right")
+
+        inside = np.sum((xs[:n] - c)**2, axis=1) < new_radius**2
+        count = np.count_nonzero(inside)
+        if count < nmin:
+            return c, npart, radius, niter, _STOP_NPART
+
+        m = ms[:n][inside]
+        new_c = np.sum(xs[:n][inside] * m[:, None], axis=0, dtype=np.float64) / np.sum(m)
+        shift = np.linalg.norm(new_c - c)
+        c, radius, npart = new_c, new_radius, count
         niter += 1
-    return com_pos, indices, niter, _STOP_DELTA
+        if shift <= delta:
+            return c, npart, radius, niter, _STOP_DELTA
 
 
 @njit
-def _ssphere_kernel(xyz, mass, indices, com_pos, delta, nmin, r2_min):
-    """
-    Shrink the sphere around `com_pos`, starting from the particles in
-    `indices`, by 2.5% in radius per step until the squared radius would drop
-    below `r2_min`, fewer than `nmin` particles would remain, or the center
-    moves less than `delta` (no early stop if delta < 0). Returns the center,
-    the particles in the final sphere, the number of steps and what stopped
-    it (one of the _STOP_* codes).
-    """
-    com_pos = com_pos.copy()
+def _sort_by_distance_numba(xyz, mass, ref):
+    """Numba version of `_sort_by_distance`."""
+    n = xyz.shape[0]
+    d2 = np.empty(n)
+    for i in range(n):
+        dx = xyz[i, 0] - ref[0]
+        dy = xyz[i, 1] - ref[1]
+        dz = xyz[i, 2] - ref[2]
+        d2[i] = dx*dx + dy*dy + dz*dz
+    order = np.argsort(d2)
+    xs = np.empty((n, 3), dtype=xyz.dtype)
+    ms = np.empty(n)
+    ds = np.empty(n)
+    for i in range(n):
+        k = order[i]
+        xs[i, 0] = xyz[k, 0]
+        xs[i, 1] = xyz[k, 1]
+        xs[i, 2] = xyz[k, 2]
+        ms[i] = mass[k]
+        ds[i] = np.sqrt(d2[k])
+    return xs, ms, ds
+
+
+@njit
+def _ssphere_kernel(xyz, mass, com_pos, radius, delta, nmin, r2_min, prune=True):
+    """Numba version of the Power et al. shrinking sphere (see the comment above)."""
+    c = com_pos.astype(np.float64)
+    ref = c.copy()
+    xs, ms, ds = _sort_by_distance_numba(xyz, mass, ref)
+    npart = np.searchsorted(ds, radius, side="right")
     niter = 0
-    shift = np.inf
-    while shift > delta:
-        # Compute squared distance from COM
-        r2 = np.zeros(len(indices))
-        for i in range(len(indices)):
-            dx = xyz[indices[i], 0] - com_pos[0]
-            dy = xyz[indices[i], 1] - com_pos[1]
-            dz = xyz[indices[i], 2] - com_pos[2]
-            r2[i] = dx*dx + dy*dy + dz*dz
+    while True:
+        new_radius = 0.975 * radius
+        if new_radius * new_radius < r2_min:
+            return c, npart, radius, niter, 2  # _STOP_SOFTENING
 
-        r2_max = np.max(r2)
-        r2_cut = r2_max * 0.975**2
-        if r2_cut < r2_min:
-            return com_pos, indices, niter, 2  # _STOP_SOFTENING
+        drift = np.sqrt(np.sum((c - ref)**2))
+        if drift > new_radius:
+            ref = c.copy()
+            xs, ms, ds = _sort_by_distance_numba(xyz, mass, ref)
+            drift = 0.0
+        n = len(ds)
+        if prune:
+            n = np.searchsorted(ds, (new_radius + drift) * (1 + _PRUNE_MARGIN), side="right")
 
-        # Select indices within cut radius
+        # One pass: count the particles inside the sphere and sum their mass and m * x
+        r2_cut = new_radius * new_radius
         count = 0
-        for i in range(len(r2)):
-            if r2[i] < r2_cut:
-                count += 1
-
-        if count < nmin:
-            return com_pos, indices, niter, 0  # _STOP_NPART
-
-        new_indices = np.empty(count, dtype=np.int64)
-        j = 0
-        for i in range(len(r2)):
-            if r2[i] < r2_cut:
-                new_indices[j] = indices[i]
-                j += 1
-
-        indices = new_indices
-
         msum = 0.0
-        new_com_pos = np.zeros(3)
-        for i in range(len(indices)):
-            m = mass[indices[i]]
-            msum += m
-            for j in range(3):
-                new_com_pos[j] += xyz[indices[i], j] * m
-        for j in range(3):
-            new_com_pos[j] /= msum
+        sx = 0.0
+        sy = 0.0
+        sz = 0.0
+        for i in range(n):
+            dx = xs[i, 0] - c[0]
+            dy = xs[i, 1] - c[1]
+            dz = xs[i, 2] - c[2]
+            if dx*dx + dy*dy + dz*dz < r2_cut:
+                m = ms[i]
+                count += 1
+                msum += m
+                sx += xs[i, 0] * m
+                sy += xs[i, 1] * m
+                sz += xs[i, 2] * m
+        if count < nmin:
+            return c, npart, radius, niter, 0  # _STOP_NPART
 
-        shift = np.sqrt(np.sum((new_com_pos - com_pos)**2))
-        com_pos = new_com_pos
+        new_c = np.array([sx / msum, sy / msum, sz / msum])
+        shift = np.sqrt(np.sum((new_c - c)**2))
+        c = new_c
+        radius = new_radius
+        npart = count
         niter += 1
-
-    return com_pos, indices, niter, 1  # _STOP_DELTA
+        if shift <= delta:
+            return c, npart, radius, niter, 1  # _STOP_DELTA
 
 
 def _com_velocity(xyz, vxyz, mass, center, rcut_vel, nvel):
@@ -155,20 +211,21 @@ def _com_velocity(xyz, vxyz, mass, center, rcut_vel, nvel):
 def _shrinking_sphere(loop, xyz, vxyz, mass, delta, rcut_vel, min_npart, softening,
                       center0, r0, nvel, return_info):
     """Shrinking sphere driver shared by the NumPy and Numba versions."""
-    indices, com = _initial_sphere(xyz, mass, center0, r0)
+    com, radius = _initial_sphere(xyz, mass, center0, r0)
     # Power et al. (2003): min_npart particles or 1% of the halo, whichever is smaller
     nmin = max(1, min(min_npart, int(0.01 * len(mass))))
     if softening is not None and softening < 0:
         raise ValueError("softening must be non-negative")
     r2_min = 0.0 if softening is None else float(4 * softening)**2
-    com, indices, niter, stop = loop(xyz, mass, indices, com,
-                                     -1.0 if delta is None else float(delta), nmin, r2_min)
+    com, npart, radius, niter, stop = loop(xyz, mass, com, radius,
+                                           -1.0 if delta is None else float(delta),
+                                           nmin, r2_min)
     com_vel, n_vel = _com_velocity(xyz, vxyz, mass, com, rcut_vel, nvel)
     if not return_info:
         return com, com_vel
     info = {
-        "radius": float(np.sqrt(np.max(np.sum((xyz[indices] - com)**2, axis=1)))),
-        "npart": len(indices),
+        "radius": float(radius),
+        "npart": int(npart),
         "niter": niter,
         "stop": _STOP_NAMES[stop],
         "nvel": n_vel,
@@ -348,7 +405,7 @@ class CenterHalo:
         if kwargs:
             raise TypeError(f"Unexpected keyword arguments: {list(kwargs)}")
         self._require("vel", "mass")
-        return _shrinking_sphere(_ssphere_loop_numpy, self.pos, self.vel, self.mass, delta,
+        return _shrinking_sphere(_ssphere_power, self.pos, self.vel, self.mass, delta,
                                  rcut_vel, min_npart, softening, center0, r0, nvel,
                                  return_info)
 

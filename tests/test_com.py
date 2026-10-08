@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from nba.com import CenterHalo
+from nba.com.com_methods import _initial_sphere, _ssphere_kernel, _ssphere_power
 
 
 def cuspy_halo_with_satellite(n=200000, seed=1):
@@ -212,3 +213,50 @@ def test_shrinking_sphere_softening(halo, method):
     np.testing.assert_allclose(com, offset, atol=0.1)
     with pytest.raises(ValueError):
         getattr(CenterHalo(data), method)(softening=-1)
+
+
+def _power_brute_force(pos, mass, center, radius, nmin):
+    """Power et al. (2003) shrinking sphere over all particles at every step."""
+    while True:
+        new_radius = 0.975 * radius
+        inside = np.sum((pos - center)**2, axis=1) < new_radius**2
+        if np.count_nonzero(inside) < nmin:
+            return center, radius
+        center = np.average(pos[inside], axis=0, weights=mass[inside])
+        radius = new_radius
+
+
+@pytest.mark.parametrize("method", ["shrinking_sphere", "shrinking_sphere_numba"])
+def test_shrinking_sphere_matches_power_brute_force(method):
+    data, _ = cuspy_halo_with_satellite(n=20000)
+    pos, mass = data["pos"], data["mass"]
+    start = np.average(pos, axis=0, weights=mass)
+    expected, radius = _power_brute_force(pos, mass, start,
+                                          np.max(np.linalg.norm(pos - start, axis=1)), 200)
+    com, _, info = getattr(CenterHalo(data), method)(return_info=True)
+    # Rounding (here already in the start center) can move a particle across
+    # the sphere edge and change the path slightly, so the stop can come a few
+    # steps earlier or later: ask for agreement well within the final sphere
+    assert info["radius"] == pytest.approx(radius, rel=0.2)
+    np.testing.assert_allclose(com, expected, rtol=0, atol=0.1 * radius)
+
+
+@pytest.mark.parametrize("loop", [_ssphere_power, _ssphere_kernel])
+def test_shrinking_sphere_pruning_is_exact(loop):
+    # The satellite pulls the start center away, so the center drifts and the
+    # sorted reference is reset during the shrinking
+    data, _ = cuspy_halo_with_satellite(n=20000)
+    pos, mass = data["pos"], data["mass"]
+    center, radius = _initial_sphere(pos, mass)
+    pruned = loop(pos, mass, center, radius, -1.0, 200, 0.0, True)
+    full = loop(pos, mass, center, radius, -1.0, 200, 0.0, False)
+    np.testing.assert_array_equal(pruned[0], full[0])
+    assert pruned[1:] == full[1:]
+
+
+@pytest.mark.parametrize("method", ["shrinking_sphere", "shrinking_sphere_numba"])
+def test_shrinking_sphere_radius_sequence(halo, method):
+    data, offset, _ = halo
+    _, _, info = getattr(CenterHalo(data), method)(center0=offset, r0=3.0, return_info=True)
+    assert info["niter"] > 0
+    assert info["radius"] == pytest.approx(3.0 * 0.975**info["niter"])
