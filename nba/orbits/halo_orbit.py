@@ -323,7 +323,7 @@ def _info_columns(infos):
 
 
 def _write_orbits(outfile, path, snapname, snapshots, halo, names, times, offsets, results,
-                  log, parameters, simulation, notes):
+                  log, parameters, simulation, notes, full_provenance):
     """Write one orbit file per method (see `orbit`)."""
     found = _snapshot_units(os.path.join(path, snapname.format(snapshots[0])))
     units, values, time_to_gyr = found if found else ({}, {}, None)
@@ -355,12 +355,12 @@ def _write_orbits(outfile, path, snapname, snapshots, halo, names, times, offset
                     t_code * time_to_gyr if time_to_gyr else t_code, pos, vel,
                     t_code=t_code, time_offset=offsets, info=_info_columns(infos), units=units,
                     simulation=sim, selection=selection, method=name, parameters=params,
-                    warnings=method_log, notes=notes)
+                    warnings=method_log, notes=notes, full_provenance=full_provenance)
 
 
 def orbit(path, snapname, snapshots, halo="MW", com_method="shrinking",
           rcut_pot=2.0, rcut_vel=20.0, randomsample=None, r0=None, softening=None, *,
-          outfile=None, simulation=None, notes=None, **kwargs):
+          outfile=None, simulation=None, notes=None, full_provenance=False, **kwargs):
     """
     Compute the center-of-mass position and velocity of a halo for a sequence
     of snapshots. See :func:`iter_orbit` for the parameters; its keyword-only
@@ -377,6 +377,9 @@ def orbit(path, snapname, snapshots, halo="MW", com_method="shrinking",
         Extra simulation metadata for the file, e.g. ``{"name": "MWLMC5_b0"}``.
     notes : str or None
         Free text stored in the file.
+    full_provenance : bool
+        Also record the nba path, user, host, SLURM job and command line in
+        the file (see :func:`nba.orbits.provenance`).
 
     Returns
     -------
@@ -424,7 +427,7 @@ def orbit(path, snapname, snapshots, halo="MW", com_method="shrinking",
         names = {m: _method_name(m) for m in methods}
         results = {m: (pos[m], vel[m], infos[m]) for m in methods}
         _write_orbits(outfile, path, snapname, snapshots, halo, names, times, offsets, results,
-                      log, parameters, simulation, notes)
+                      log, parameters, simulation, notes, full_provenance)
 
     if single:
         return pos[com_method], vel[com_method]

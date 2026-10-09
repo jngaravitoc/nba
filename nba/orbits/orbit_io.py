@@ -3,8 +3,8 @@ Self-describing orbit files.
 
 An orbit is written as an astropy ECSV table: plain text, one row per
 snapshot, with units on every column and a YAML metadata block in the
-header holding the provenance (nba version and commit, environment,
-command), the simulation, the particle selection, every centering parameter
+header holding the provenance (nba version and commit, and optionally
+the machine and command), the simulation, the particle selection, every centering parameter
 as used and the warnings raised during the run.
 
 The columns are ``snap t x y z vx vy vz``, then the times in code units and
@@ -59,32 +59,39 @@ def _git(path, *args):
         return None
 
 
-def provenance():
+def provenance(full=False):
     """
-    Software and environment that produced a file: nba version, path and git
-    commit (None for installs that are not git checkouts), whether the
-    checkout has uncommitted changes, Python and numpy versions, date, user,
-    host, SLURM job and command.
+    Software that produced a file: nba version and git commit (None for
+    installs that are not git checkouts), branch, whether the checkout has
+    uncommitted changes, Python and numpy versions and the date.
+
+    With `full`, also where and by whom: the nba path, user, host, SLURM job
+    and command line. These are left out by default because orbit files are
+    often shared, and they describe the local machine rather than the code.
     """
     import nba
     nba_path = os.path.dirname(os.path.abspath(nba.__file__))
     repo = os.path.dirname(nba_path)
     commit = _git(repo, "rev-parse", "HEAD")
     status = _git(repo, "status", "--porcelain", "--untracked-files=no") if commit else None
-    return {
+    info = {
         "nba_version": getattr(nba, "__version__", None),
-        "nba_path": nba_path,
         "nba_commit": commit,
         "nba_branch": _git(repo, "rev-parse", "--abbrev-ref", "HEAD") if commit else None,
         "nba_dirty": (status != "") if status is not None else None,
         "python": platform.python_version(),
         "numpy": np.__version__,
         "created": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-        "user": getpass.getuser(),
-        "host": socket.gethostname(),
-        "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
-        "command": " ".join(sys.argv),
     }
+    if full:
+        info.update({
+            "nba_path": nba_path,
+            "user": getpass.getuser(),
+            "host": socket.gethostname(),
+            "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
+            "command": " ".join(sys.argv),
+        })
+    return info
 
 
 def _quantity(values, unit):
@@ -96,7 +103,7 @@ def _quantity(values, unit):
 
 def write_orbit(path, snap, t, pos, vel, *, t_code=None, time_offset=None, info=None,
                 units=None, simulation=None, selection=None, method=None, parameters=None,
-                warnings=None, notes=None, provenance_info=None):
+                warnings=None, notes=None, provenance_info=None, full_provenance=False):
     """
     Write an orbit as an ECSV table.
 
@@ -129,8 +136,11 @@ def write_orbit(path, snap, t, pos, vel, *, t_code=None, time_offset=None, info=
     notes : str, optional
     provenance_info : dict, optional
         Provenance recorded when the orbit was computed. Defaults to
-        `provenance()`, which is only right when the file is written by the
-        run itself.
+        `provenance(full_provenance)`, which is only right when the file is
+        written by the run itself.
+    full_provenance : bool
+        Also record the nba path, user, host, SLURM job and command line
+        (see `provenance`).
 
     Returns
     -------
@@ -162,7 +172,7 @@ def write_orbit(path, snap, t, pos, vel, *, t_code=None, time_offset=None, info=
             table[name].description = DESCRIPTIONS[name]
     table.meta = {
         "format": f"nba orbit file {FORMAT_VERSION}",
-        "provenance": provenance_info or provenance(),
+        "provenance": provenance_info or provenance(full_provenance),
         "simulation": simulation or {},
         "selection": selection or {},
         "method": method,

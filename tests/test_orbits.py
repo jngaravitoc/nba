@@ -246,6 +246,7 @@ def test_orbit_writes_ecsv(tmp_path):
     assert meta["simulation"]["name"] == "test" and meta["notes"] == "a test"
     assert meta["simulation"]["units"]["time_code_to_Gyr"] == pytest.approx(0.9778, rel=1e-4)
     assert meta["provenance"]["nba_version"]
+    assert "user" not in meta["provenance"] and "host" not in meta["provenance"]  # private by default
     assert meta["warnings"] == []
     # numpy structured array without units
     assert read_orbit(out.format(method="shrinking"), as_array=True)["x"].shape == (3,)
@@ -269,3 +270,12 @@ def test_orbit_outfile_needs_method_field(snaps, tmp_path):
     with pytest.raises(ValueError, match="method"):
         orbit(snaps, "sim_{:03d}.hdf5", [0], com_method=["mean_pos", "shrinking"],
               outfile=str(tmp_path / "o.ecsv"))
+
+
+def test_full_provenance(snaps, tmp_path):
+    from nba.orbits import read_orbit
+
+    out = str(tmp_path / "o.ecsv")
+    orbit(snaps, "sim_{:03d}.hdf5", [0], com_method="mean_pos", outfile=out, full_provenance=True)
+    prov = read_orbit(out).meta["provenance"]
+    assert {"nba_path", "user", "host", "slurm_job_id", "command"} <= set(prov)
