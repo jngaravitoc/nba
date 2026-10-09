@@ -1,3 +1,5 @@
+import warnings
+
 import h5py
 import numpy as np
 import pytest
@@ -65,7 +67,8 @@ def test_iter_orbit_reads_each_snapshot_once(snaps, monkeypatch):
 
     monkeypatch.setattr(snap_reader.ReadGadgetSim, "read_snapshot", counting)
     steps = list(iter_orbit(snaps, "sim_{:03d}.hdf5", [0, 1], halo="MW",
-                            com_method=["mean_pos", "shrinking_sphere", "min_potential"]))
+                            com_method=["mean_pos", "shrinking_sphere", "min_potential"],
+                            softening=SOFTENING))
 
     assert [s[0] for s in steps] == [0, 1]
     assert [s[1] for s in steps] == [CENTERS[0][0], CENTERS[1][0]]  # time from the header
@@ -80,6 +83,66 @@ def test_orbit_invalid_method(snaps):
 def test_diskpot_requires_mw(snaps):
     with pytest.raises(ValueError):
         orbit(snaps, "sim_{:03d}.hdf5", [0], halo="LMC", com_method="diskpot")
+
+
+def test_potential_methods_require_mw(snaps):
+    with pytest.raises(ValueError, match="shrinking sphere"):
+        orbit(snaps, "sim_{:03d}.hdf5", [0], halo="LMC", com_method="min_potential")
+
+
+def test_orbit_warns_without_softening(snaps):
+    with pytest.warns(UserWarning, match="softening"):
+        orbit(snaps, "sim_{:03d}.hdf5", [0], halo="MW", com_method="shrinking")
+
+
+def test_iter_orbit_warns_on_jump(snaps):
+    # the centers move by sqrt(3) in dt = 1 with |v| ~ 7
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        list(iter_orbit(snaps, "sim_{:03d}.hdf5", [0, 1], com_method="mean_pos"))
+    with pytest.warns(UserWarning, match="moved"):
+        list(iter_orbit(snaps, "sim_{:03d}.hdf5", [0, 1], com_method="mean_pos", jump_factor=0.1))
+
+
+def test_iter_orbit_time_offset(snaps):
+    with pytest.warns(UserWarning, match="time decreases"):
+        steps = list(iter_orbit(snaps, "sim_{:03d}.hdf5", [1, 0], com_method="mean_pos"))
+    assert [s[1] for s in steps] == [2.0, 1.0]
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        steps = list(iter_orbit(snaps, "sim_{:03d}.hdf5", [1, 0], com_method="mean_pos",
+                                time_offset=lambda k: 10.0 if k == 0 else 0.0, jump_factor=None))
+    assert [s[1] for s in steps] == [2.0, 11.0]
+
+
+def test_iter_orbit_return_info(snaps):
+    steps = list(iter_orbit(snaps, "sim_{:03d}.hdf5", [0], com_method=["shrinking", "min_potential"],
+                            softening=SOFTENING, rvel_factor=2.0, return_info=True))
+    _, _, centers = steps[0]
+    _, _, info = centers["shrinking"]
+    assert info["stop"] == "softening" and info["nvel"] > 0
+    _, _, info = centers["min_potential"]
+    assert info["npart"] > 0
+
+
+def test_read_halo_split_and_sample(tmp_path, monkeypatch):
+    from nba.ios import ReadGC21
+
+    rng = np.random.default_rng(2)
+    ids = rng.permutation(N) + 1000  # MW: the 3000 lowest IDs
+    with h5py.File(tmp_path / "split.hdf5", "w") as f:
+        g = f.create_group("PartType1")
+        g["Coordinates"] = np.zeros((N, 3))
+        g["ParticleIDs"] = ids
+    monkeypatch.setattr(ReadGC21, "npart_mw", 3000)
+    reader = ReadGC21(str(tmp_path), "split.hdf5")
+    mw = reader.read_halo("pos", halo="MW", ptype="dm")
+    lmc = reader.read_halo("pos", halo="LMC", ptype="dm")
+    np.testing.assert_array_equal(mw["pid"], ids[ids < 4000])
+    np.testing.assert_array_equal(lmc["pid"], ids[ids >= 4000])
+    sample = reader.read_halo("pos", halo="LMC", ptype="dm", randomsample=1500, seed=0)
+    assert len(np.unique(sample["pid"])) == 1500  # exactly n distinct particles
+    assert np.all(sample["pid"] >= 4000)
 
 
 @pytest.mark.parametrize("method", ["shrinking_sphere", "shrinking_sphere_numba"])
