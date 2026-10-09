@@ -1,7 +1,7 @@
 # COM methods for a disrupting satellite: assessment and suggestions
 
 Test case: LMC in GC21 **MWLMC5_b0** (15M LMC DM particles, 451 snapshots, 0–8.80 Gyr),
-nba 0.3.0 at commit `3ff4881` (local `/home/nicolas.garavito/codes/nba`, installed editable).
+nba 0.3.0 at commit `3ff4881` (local checkout, installed editable).
 All methods were run with the tutorial defaults (`compute_lmc_orbits.py`): `rcut_pot=2`,
 `rcut_vel=20`, `min_npart=1000`, no `delta`, `r0`, `center0`, `softening` or `nvel`.
 

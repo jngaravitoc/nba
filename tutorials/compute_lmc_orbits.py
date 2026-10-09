@@ -44,8 +44,7 @@ def find_snapshots(path, snapname):
 
 if __name__ == "__main__":
     parser = ArgumentParser(description=__doc__)
-    parser.add_argument("path", nargs="?", default="/mnt/home/nico/ceph/gadget_runs/MWLMC/MWLMC5/out/",
-                        help="Directory with the snapshots")
+    parser.add_argument("path", help="Directory with the snapshots")
     parser.add_argument("--snapname", default="MWLMC5_100M_b0_vir_OM3_G4_{:03d}.hdf5",
                         help="Snapshot name with a format field for the snapshot number")
     parser.add_argument("--init", type=int, default=0, help="First snapshot")

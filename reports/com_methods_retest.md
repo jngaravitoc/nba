@@ -233,11 +233,11 @@ Example: the header of `data/retest_8c1c3a1/tracked_r15_300-335/MWLMC5_b0_lmc_or
 # - {name: nvel, datatype: int64, description: particles used for the velocity}
 # meta: !!omap
 # - {format: nba orbit file 0.1}
-# - provenance: {nba_commit: 8c1c3a1, nba_path: /home/nicolas.garavito/codes/nba/nba, nba_version: 0.3.0,
+# - provenance: {nba_commit: 8c1c3a1, nba_version: 0.3.0,
 #     slurm_job_id: '12144', source: job log lmc_orbit_tracked_12144.out}
 # - simulation:
 #     name: MWLMC5_b0
-#     snapshot_dir: /data8/ngaravito/XMC-Atlas-sims/GC21/MWLMC5_b0/out
+#     snapshot_dir: <simulations>/GC21/MWLMC5_b0/out
 #     snapshot_pattern: MWLMC5_100M_b0_vir_OM3_G4_{:03d}.hdf5
 #     snapshots: 300-335 (36)
 #     time_offsets: ['from snap 400: +8 (code units)']
@@ -317,7 +317,7 @@ halos in `nba/tests/test_com.py`.
 - With nba `8c1c3a1`: **27 passed, 3 expected failures** (`xfail`, strict; see point 3 under the tests below).
 
 ### Files and paths
-All paths are relative to `/home/nicolas.garavito/projects/nba_centering/`.
+All paths are relative to the `nba_centering` project folder.
 
 | Path | What it is | Size |
 |---|---|---|
@@ -326,7 +326,7 @@ All paths are relative to `/home/nicolas.garavito/projects/nba_centering/`.
 | `tests/data/MWLMC5_b0_snap150_lmc_centers.json` | Reference results from nba `8c1c3a1` (described below) | 8.8 kB |
 | `tests/README.md` | How the files were made and how to regenerate them | – |
 | `scripts/make_centering_test_data.py` | Generator. It reads the snapshot with h5py, independently of nba, then computes the references with the installed nba | – |
-| `slurm/make_test_data.sh` | Runs the generator; it needs the snapshot at `/data8/ngaravito/XMC-Atlas-sims/GC21/MWLMC5_b0/out/MWLMC5_100M_b0_vir_OM3_G4_150.hdf5` | – |
+| `slurm/make_test_data.sh` | Runs the generator; it needs the snapshot at `<simulations>/GC21/MWLMC5_b0/out/MWLMC5_100M_b0_vir_OM3_G4_150.hdf5` | – |
 | `slurm/test_centering.sh` | Runs the tests on the cluster, and logs the nba commit and the checksums of the test and data files | – |
 
 **How the subsample was made:**

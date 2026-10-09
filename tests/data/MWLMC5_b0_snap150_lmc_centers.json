@@ -9,16 +9,12 @@
   "seed": 150,
   "provenance": {
    "nba_version": "0.3.0",
-   "nba_path": "/home/nicolas.garavito/codes/nba/nba",
    "nba_commit": "8c1c3a1af3888b70119d2534c99e573d38130732",
    "nba_branch": "devel",
    "nba_dirty": false,
    "python": "3.11.4",
    "numpy": "2.4.6",
    "created": "2026-10-09T17:48:33+00:00",
-   "user": "nicolas.garavito",
-   "host": "geryon3-04.astro.puc.cl",
-   "slurm_job_id": "12258",
    "command": "scripts/make_centering_test_data.py"
   },
   "configs": {
@@ -49,7 +45,8 @@
    }
   },
   "updates": [
-   "info['npart'] now counts the particles within info['radius'] of the returned center, like info['density'] (nba devel after 8c1c3a1). The stored npart values were updated from the stored density, radius and particle mass (npart = density * 4/3 pi radius^3 / mass); everything else is as computed with nba 8c1c3a1."
+   "info['npart'] now counts the particles within info['radius'] of the returned center, like info['density'] (nba devel after 8c1c3a1). The stored npart values were updated from the stored density, radius and particle mass (npart = density * 4/3 pi radius^3 / mass); everything else is as computed with nba 8c1c3a1.",
+   "The local path, user, host and SLURM job were removed from meta.provenance, as nba.orbits.provenance() now does by default."
   ]
  },
  "subsample": {
