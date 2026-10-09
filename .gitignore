@@ -7,4 +7,6 @@ dist/
 nba_env/
 .ipynb_checkpoints/
 data/
+!tests/data/
+tests/data/*.npz
 *.code-workspace
