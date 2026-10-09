@@ -45,6 +45,14 @@ build-backend = "setuptools.build_meta"
 [project.optional-dependencies]
 
 dev = ["pytest", "flake8"]
+docs = [
+    "sphinx",
+    "sphinx-astropy",
+    "pydata-sphinx-theme",
+    "myst-nb",
+    "nbconvert",  # to run the tutorial notebooks
+    "ipykernel",
+]
 extra = [
     "healpy",
     "pynbody",
