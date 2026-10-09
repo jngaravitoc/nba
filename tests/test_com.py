@@ -346,3 +346,14 @@ def test_min_potential_info(halo):
     assert info["npart"] == np.count_nonzero(r < 1.0)
     with pytest.warns(UserWarning, match="only 1 particles"):
         CenterHalo(dict(data, pot=pot)).min_potential(rcut=1e-9)
+
+
+@pytest.mark.parametrize("method", ["shrinking_sphere", "shrinking_sphere_numba"])
+@pytest.mark.parametrize("kwargs", [{}, {"softening": 0.25}, {"min_npart": 5000, "npart_frac": None}])
+def test_shrinking_sphere_npart_and_density_same_sphere(halo, method, kwargs):
+    # both describe the particles within `radius` of the returned center
+    data, _, _ = halo  # unit masses
+    com, _, info = getattr(CenterHalo(data), method)(return_info=True, **kwargs)
+    r = np.linalg.norm(data["pos"] - com, axis=1)
+    assert info["npart"] == np.count_nonzero(r < info["radius"])
+    assert info["density"] * 4 / 3 * np.pi * info["radius"]**3 == pytest.approx(info["npart"])

@@ -222,7 +222,9 @@ def _shrinking_sphere(loop, xyz, vxyz, mass, delta, rcut_vel, min_npart, softeni
     nmin = min_npart if npart_frac is None else min(min_npart, int(npart_frac * len(mass)))
     nmin = max(1, nmin)
     r2_min = 0.0 if softening is None else float(4 * softening)**2
-    com, npart, radius, niter, stop = loop(xyz, mass, com, radius,
+    # The loop's particle count is that of the last sphere, around the previous
+    # center; info recounts around the returned center (see below)
+    com, _, radius, niter, stop = loop(xyz, mass, com, radius,
                                            -1.0 if delta is None else float(delta),
                                            nmin, r2_min)
     r2 = np.sum((xyz - com)**2, axis=1)
@@ -231,7 +233,10 @@ def _shrinking_sphere(loop, xyz, vxyz, mass, delta, rcut_vel, min_npart, softeni
     com_vel, n_vel = _com_velocity(vxyz, mass, r2, rcut_vel, nvel)
     if not return_info:
         return com, com_vel
-    mass_in = np.sum(mass[r2 < radius**2], dtype=np.float64)
+    # npart and density describe the same sphere: `radius` around the returned center
+    inside = np.sqrt(r2) < radius
+    npart = np.count_nonzero(inside)
+    mass_in = np.sum(mass[inside], dtype=np.float64)
     info = {
         "radius": float(radius),
         "npart": int(npart),
@@ -290,12 +295,14 @@ _SSPHERE_DOC = """
         that it describes the same region as the center. Cannot be combined
         with `nvel`.
     return_info : bool
-        Also return a dict with the final sphere radius (`radius`), its
-        number of particles (`npart`), the minimum number of particles used
+        Also return a dict with the final sphere radius (`radius`), the
+        number of particles (`npart`) and mean density (`density`) within
+        `radius` of the returned center, the minimum number of particles used
         (`nmin`), the number of steps (`niter`), what stopped it (`stop`:
-        'min_npart', 'softening' or 'delta'), the mean density within
-        `radius` of the center (`density`) and the number of particles used
-        for the velocity (`nvel`). A jump in `radius` or a drop in `density`
+        'min_npart', 'softening' or 'delta') and the number of particles used
+        for the velocity (`nvel`). The stopping test counts the particles of
+        the last sphere, around the previous center, so `npart` can differ
+        from that count (and from `nmin`) by a few particles. A jump in `radius` or a drop in `density`
         between snapshots flags a center that is no longer well defined.
 
     The old names `minNpart` (and `rcut` in the Numba version) are accepted
