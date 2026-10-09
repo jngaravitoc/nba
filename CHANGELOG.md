@@ -7,6 +7,10 @@ Versions before 0.3.0 were originally numbered 1.0.1, 1.1 and 1.2; they were ren
 
 ## [Unreleased]
 ### Changed
+- `tutorials/Reading_GC21_MWLMC_snapshots.ipynb` and `tutorials/lmc_centering.ipynb` were rewritten for the
+  current API and are committed with their outputs, since the documentation shows them without running them
+  (see `tutorials/README.md`); `nba.com` exports `ssphere_numba`; numpydoc docstrings in `nba.ios` and
+  `nba.com`
 - Shrinking sphere `info['npart']` counts the particles within `info['radius']` of the returned
   center, like `info['density']` (it counted the last sphere, around the previous center)
 - `tutorials/compute_lmc_orbits.py` defaults to `rvel_factor=5` and `min_density_ratio=0.01`, as
@@ -24,6 +28,9 @@ Versions before 0.3.0 were originally numbered 1.0.1, 1.1 and 1.2; they were ren
 - `tutorials/compute_lmc_orbits.py` no longer runs `min_potential`; it uses `softening=0.08` and
   `r0=15` by default
 ### Added
+- Documentation in `docs/` (Sphinx, laid out like gala's): installation, getting started, user guide pages
+  for `nba.ios` and `nba.com` with tested examples, API pages, the tutorials and this changelog; build with
+  `make -C docs html` after `pip install -e ".[docs]"`
 - `nba.orbits.write_orbit`, `read_orbit` and `provenance`: self-describing ECSV orbit files with
   units, per-snapshot diagnostics, every parameter as used, the warnings and the provenance (nba
   commit, environment, command); `orbit(..., outfile=...)` writes one per method
