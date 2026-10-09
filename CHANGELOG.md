@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 Versions before 0.3.0 were originally numbered 1.0.1, 1.1 and 1.2; they were renumbered 0.1.0,
 0.1.1 and 0.2.0 to match the package metadata and the pre-1.0 state of the API.
 
-## [Unreleased]
+## [0.4.0] - 2026-10-09
 ### Breaking changes
 - `CenterHalo.shrinking_sphere`, `shrinking_sphere_numba` and `ssphere_numba`: all parameters after
   `delta` are keyword-only (the two methods took `min_npart` and `rcut_vel` in a different order, so

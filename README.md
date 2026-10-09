@@ -15,8 +15,8 @@ $ cd nba/
 $ python -m pip install .
 ```
 
-Python >= 3.10 is required. The `devel` branch is the development version (0.4.0.dev0); see
-[CHANGELOG.md](CHANGELOG.md) for the changes since 0.3.0, some of which are not backwards compatible. Optional dependencies are installed with extras:
+Python >= 3.10 is required. Version 0.4.0 has changes that are not backwards compatible with 0.3.0;
+see [CHANGELOG.md](CHANGELOG.md). Optional dependencies are installed with extras:
 
 ```
 $ python -m pip install ".[extra]"   # healpy, pynbody, FIRE tools (gizmo_analysis, halo_analysis)
