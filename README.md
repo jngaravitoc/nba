@@ -122,8 +122,7 @@ for an example that computes the orbits of the MW and the LMC.
 
 ## Documentation
 
-The documentation is in [`docs/`](docs/), built with Sphinx and laid out like
-[gala's](https://gala.adrian.pw):
+The documentation is in [`docs/`](docs/), built with Sphinx.
 
 ```
 $ python -m pip install -e ".[docs]"
