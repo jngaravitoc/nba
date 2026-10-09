@@ -3,10 +3,9 @@
 N-body Analysis (NBA) is a Python package to analyze N-body simulations of galaxies:
 halo centering, density and kinematic profiles, orbits, and simple sky maps.
 
-**Documentation:** [`docs/`](docs/). It covers installation, getting started, a user guide for the
-snapshot readers ([`nba.ios`](docs/ios/index.rst)) and halo centering ([`nba.com`](docs/com/index.rst))
-with their API, and the tutorials. It is not hosted online yet; see [Documentation](#documentation) to
-build it.
+**Documentation:** <https://jngaravitoc.github.io/nba/>. It covers installation, getting started, a user
+guide for the snapshot readers (`nba.ios`) and halo centering (`nba.com`) with their API, and the
+tutorials. See [Documentation](#documentation) to build it locally.
 
 ## Installation
 
@@ -122,7 +121,9 @@ for an example that computes the orbits of the MW and the LMC.
 
 ## Documentation
 
-The documentation is in [`docs/`](docs/), built with Sphinx.
+The documentation is published at <https://jngaravitoc.github.io/nba/> from the `main` branch, by the
+[docs workflow](.github/workflows/docs.yml). Its source is in [`docs/`](docs/), built with Sphinx; to build it
+locally:
 
 ```
 $ python -m pip install -e ".[docs]"

@@ -53,6 +53,7 @@ for name in TUTORIALS:
 # HTML
 html_theme = "pydata_sphinx_theme"
 html_title = f"nba v{version}"
+html_baseurl = "https://jngaravitoc.github.io/nba/"
 html_static_path = ["_static"]
 html_theme_options = {
     "github_url": "https://github.com/jngaravitoc/nba",
