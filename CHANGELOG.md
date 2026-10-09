@@ -7,6 +7,11 @@ Versions before 0.3.0 were originally numbered 1.0.1, 1.1 and 1.2; they were ren
 
 ## [Unreleased]
 ### Changed
+- Shrinking sphere `info['npart']` counts the particles within `info['radius']` of the returned
+  center, like `info['density']` (it counted the last sphere, around the previous center)
+- `tutorials/compute_lmc_orbits.py` defaults to `rvel_factor=5` and `min_density_ratio=0.01`, as
+  recommended by the MWLMC5_b0 re-test
+- `pyyaml` is a dependency (ECSV orbit files)
 - `CenterHalo.shrinking_sphere`, `shrinking_sphere_numba` and `ssphere_numba`: all parameters
   after `delta` are keyword-only (the two methods took `min_npart` and `rcut_vel` in a different
   order, so positional calls gave different results)
@@ -19,6 +24,16 @@ Versions before 0.3.0 were originally numbered 1.0.1, 1.1 and 1.2; they were ren
 - `tutorials/compute_lmc_orbits.py` no longer runs `min_potential`; it uses `softening=0.08` and
   `r0=15` by default
 ### Added
+- `nba.orbits.write_orbit`, `read_orbit` and `provenance`: self-describing ECSV orbit files with
+  units, per-snapshot diagnostics, every parameter as used, the warnings and the provenance (nba
+  commit, environment, command); `orbit(..., outfile=...)` writes one per method
+- `iter_orbit`: `velocity_tol`/`velocity_window` warn when a shrinking sphere center moves
+  inconsistently with its velocity for several snapshots (with `nvel` or `rvel_factor`), which
+  catches a center drifting after the satellite has dissolved; `min_density_ratio` warns when the
+  density in the final sphere falls below a fraction of its first value; `info` gains
+  `velocity_error` and `density_ratio`; `warning_log` records the warnings
+- `tests/test_centering_lmc.py`: tests on a real LMC subsample (MWLMC5_b0, snapshot 150), skipped
+  unless the particle file is found (`NBA_TEST_DATA`, see `tests/data/README.md`)
 - Shrinking sphere: `npart_frac` (None removes the 1% cap on `min_npart`), `rvel_factor` (velocity
   from a multiple of the final radius) and `nmin`/`density` in `info`
 - `CenterHalo.min_potential(return_info=True)` and a warning when fewer than 10 particles are
