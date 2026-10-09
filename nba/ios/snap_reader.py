@@ -12,14 +12,20 @@ logger = logging.getLogger(__name__)
 
 class ReadGadgetSim:
     """
-    A class to read Gadget4 (HDF5) simulation snapshots.
+    Reader of Gadget-4 HDF5 snapshots.
 
     Parameters
     ----------
     path : str
         Directory containing the snapshot files.
     snapname : str
-        Base name of the snapshot file (without .hdf5).
+        File name of the snapshot, including the ``.hdf5`` extension.
+
+    Examples
+    --------
+    >>> snap = ReadGadgetSim("/path/to/snapshots", "snapshot_100.hdf5")  # doctest: +SKIP
+    >>> header = snap.read_header()  # doctest: +SKIP
+    >>> dm = snap.read_snapshot(["pos", "vel", "mass"], ptype="dm")  # doctest: +SKIP
     """
 
     def __init__(self, path: str, snapname: str):
@@ -29,19 +35,22 @@ class ReadGadgetSim:
 
     def open_snap(self, ptype: str, prop_names: Union[str, List[str]]) -> Dict[str, np.ndarray]:
         """
-        Read specified properties from the HDF5 snapshot file for a given particle type.
+        Read HDF5 datasets of one particle group.
+
+        Lower-level than `read_snapshot`: it takes the names used in the file.
 
         Parameters
         ----------
         ptype : str
-            Particle type group in the file (e.g., 'PartType1', 'PartType2', ...)
+            Particle group in the file, e.g. ``'PartType1'``.
         prop_names : str or list of str
-            HDF5 dataset property names to load (e.g., 'Coordinates', 'Velocities')
+            HDF5 dataset names, e.g. ``'Coordinates'``, ``'Velocities'``.
 
         Returns
         -------
         dict
-            Dictionary mapping standard keys ('pos', 'vel', 'mass', etc.) to NumPy arrays
+            Maps the nba names (``'pos'``, ``'vel'``, ``'mass'``, ``'pot'``,
+            ``'pid'``, ``'acc'``) to arrays. Other datasets keep their name.
         """
 
         prop_map_reverse = {
@@ -76,12 +85,14 @@ class ReadGadgetSim:
 
     def read_header(self) -> Dict[str, Union[int, float]]:
         """
-        Read selected header attributes.
+        Read the header attributes ``Time``, ``Redshift``, ``BoxSize``,
+        ``NumPart_Total``, ``NumPart_Total_HighWord`` and ``MassTable``, when
+        present.
 
         Returns
         -------
         dict
-            Header information.
+            Header attributes, by name.
         """
         header_keys = ['Time', 'Redshift', 'BoxSize', 'NumPart_Total', 'NumPart_Total_HighWord', 'MassTable']
         metadata = {}
@@ -97,11 +108,12 @@ class ReadGadgetSim:
 
     def has_parttype(self, part_type: str) -> bool:
         """
-        Check if a particle type exists in the file.
+        Check whether a particle group exists in the file.
 
         Parameters
         ----------
         part_type : str
+            Particle group in the file, e.g. ``'PartType2'``.
 
         Returns
         -------
@@ -112,20 +124,23 @@ class ReadGadgetSim:
 
     def read_snapshot(self, quantity: Union[str, List[str]], ptype: str, snapformat=3) -> Union[np.ndarray, Dict[str, np.ndarray]]:       
         """
-        Load particle data depending on the snapshot format.
+        Read particle quantities of one particle type.
 
         Parameters
         ----------
+        quantity : str or list of str
+            Any of ``'pos'``, ``'vel'``, ``'mass'``, ``'pot'``, ``'pid'`` and
+            ``'acc'``.
+        ptype : {'dm', 'disk', 'bulge'}
+            Particle type: ``PartType1``, ``PartType2`` or ``PartType3``.
         snapformat : int
-            1: Gadget2/3 (not implemented), 2: ASCII (not implemented), 3: Gadget4 (HDF5)
-        quantity : str
-            'pos', 'vel', 'mass', 'pot', 'pid', 'acc'
-        ptype : str
-            'dm', 'disk', 'bulge'
+            Only 3 (Gadget-4 HDF5) is implemented; 1 (Gadget-2/3) and 2
+            (ASCII) raise `NotImplementedError`.
 
         Returns
         -------
-        np.ndarray
+        dict
+            Maps each quantity to an array, in the file's units and dtype.
         """
         if snapformat == 1:
             raise NotImplementedError("Gadget2/3 not supported yet.")
@@ -168,14 +183,19 @@ class ReadGadgetSim:
 
 class ReadGC21:
     """
-    Class to read GC21-format Gadget4 snapshots and extract halo-specific data.
+    Reader of the Garavito-Camargo et al. (2021, GC21) MW-LMC simulations,
+    which selects the particles of one halo.
+
+    The dark matter of both halos is in ``PartType1``: the `npart_mw`
+    particles with the lowest IDs are the MW, the others the LMC. The MW disk
+    and bulge are ``PartType2`` and ``PartType3``.
 
     Parameters
     ----------
     path : str
         Path to the directory containing the snapshot.
     snapname : str
-        Name of the snapshot file (without .hdf5 extension).
+        File name of the snapshot, including the ``.hdf5`` extension.
 
     Attributes
     ----------
@@ -194,28 +214,32 @@ class ReadGC21:
 
     def read_halo(self, quantity, halo, ptype, randomsample=None, seed=None):
         """
-        Load particle data for a specified halo ("MW" or "LMC") and desired quantities.
+        Read particle quantities of one halo.
+
+        All the dark matter particles are read before the halo is selected, so
+        the memory needed is that of the whole snapshot (about 6-7 GB for the
+        115M particles of GC21 with positions, velocities and masses).
 
         Parameters
         ----------
         quantity : str or list of str
-            Particle properties to read, e.g., ['pos', 'vel']. Will automatically include 'pid' for sorting.
-        halo : str
-            Which halo to return particles from: 'MW' or 'LMC'.
+            Any of the quantities of `ReadGadgetSim.read_snapshot`, e.g.
+            ``['pos', 'vel', 'mass']``. ``'pid'`` is always added.
+        halo : {'MW', 'LMC'}
+            Halo whose dark matter particles are returned (only used for
+            ``ptype='dm'``).
+        ptype : {'dm', 'disk', 'bulge'}
+            Particle type. The disk and bulge belong to the MW.
         randomsample : int or None
-            Number of particles drawn at random (without replacement) from the selection.
+            Number of particles drawn at random, without replacement, from
+            the selection (all of them if it is larger).
         seed : int or None
             Seed of the random generator used for ``randomsample``.
 
         Returns
         -------
-        dict of numpy.ndarray
-            Dictionary with keys matching `quantity`, containing filtered arrays for the selected halo.
-
-        Raises
-        ------
-        ValueError
-            If an unknown halo is specified.
+        dict
+            Maps each quantity, and ``'pid'``, to an array.
         """
 
         if isinstance(quantity, str):
@@ -286,7 +310,7 @@ class ReadSheng24:
 
         Parameters
         ----------
-        all_particle_mass : array_like
+        all_particles_mass : array_like
             Array of particle masses.
 
         Returns
@@ -331,12 +355,13 @@ class ReadSheng24:
         ----------
         quantity : str or sequence of str
             Particle quantities to read (e.g., ``'pos'``, ``'vel'``, ``'mass'``).
-        ptype : str
-            Particle type (e.g., ``'dm'``, ``'gas'``, ``'star'``).
+            ``'pid'`` and, for dark matter, ``'mass'`` are always added.
         halo : {'MW', 'LMC'}
             Halo component to select (only applied for ``ptype='dm'``).
-        randomsample : int or None, optional
-            Random subsampling size (not implemented).
+        ptype : {'dm', 'disk', 'bulge'}
+            Particle type.
+        randomsample : None
+            Not implemented: any other value raises a ValueError.
 
         Returns
         -------

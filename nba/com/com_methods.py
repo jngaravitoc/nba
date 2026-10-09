@@ -252,6 +252,11 @@ def _shrinking_sphere(loop, xyz, vxyz, mass, delta, rcut_vel, min_npart, softeni
 _SSPHERE_DOC = """
     Shrinking Sphere method (Power et al. 2003).
 
+    At each step the sphere is centered on the barycenter of the particles
+    inside it and its radius is reduced by 2.5%, until it would hold fewer
+    than the minimum number of particles or be smaller than 4 times the
+    softening. All parameters after `delta` are keyword-only.
+
     Parameters
     ----------
     delta : float or None
@@ -260,9 +265,6 @@ _SSPHERE_DOC = """
         particles. Each step shrinks the radius by only 2.5%, so the center
         moves little per step even when it is far from converged; a delta
         stop can end close to the global mean when a satellite is present.
-
-    All other parameters are keyword-only.
-
     rcut_vel : float
         Radius around the center used to compute the COM velocity.
     min_npart : int
@@ -324,8 +326,23 @@ def ssphere_numba(xyz, vxyz, mass, delta=None, *, rcut_vel=20.0, min_npart=1000,
                   center0=None, r0=None, nvel=None, rvel_factor=None, npart_frac=0.01,
                   return_info=False, softening=None):
     """
-    Numba-accelerated shrinking sphere on arrays `xyz`, `vxyz` (N, 3) and
-    `mass` (N,). See `CenterHalo.shrinking_sphere` for the other parameters.
+    Numba-accelerated shrinking sphere on arrays, without a `CenterHalo`.
+
+    Parameters
+    ----------
+    xyz, vxyz : np.ndarray, shape (N, 3)
+        Positions and velocities.
+    mass : np.ndarray, shape (N,)
+        Masses.
+    delta, rcut_vel, min_npart, center0, r0, nvel, rvel_factor, npart_frac, return_info, softening
+        See `CenterHalo.shrinking_sphere`.
+
+    Returns
+    -------
+    com_pos, com_vel : np.ndarray, shape (3,)
+        Center position and velocity.
+    info : dict
+        Only if `return_info` is True.
     """
     return _shrinking_sphere(_ssphere_kernel, xyz, vxyz, mass, delta, rcut_vel, min_npart,
                              softening, center0, r0, nvel, rvel_factor, npart_frac,
@@ -334,6 +351,41 @@ def ssphere_numba(xyz, vxyz, mass, delta=None, *, rcut_vel=20.0, min_npart=1000,
 
 
 class CenterHalo:
+    """
+    Center of a halo, from its particles.
+
+    Parameters
+    ----------
+    Halo : dict
+        Particle arrays, e.g. as returned by `nba.ios.ReadGC21.read_halo`:
+        ``'pos'`` (N, 3), and when the method needs them ``'vel'`` (N, 3),
+        ``'mass'`` (N,) and ``'pot'`` (N,). The arrays are used, not copied.
+
+    Notes
+    -----
+    The methods need:
+
+    - `shrinking_sphere`, `shrinking_sphere_numba`: ``pos``, ``vel``, ``mass``.
+      The method to use for any halo, and the only reliable one for a
+      satellite.
+    - `min_potential`: ``pos``, ``vel`` and ``pot`` (or a ``disk_pot``
+      argument). For host galaxies only: snapshots store the total potential,
+      so the lowest-potential particles of a satellite are its stripped
+      particles in the host's potential well.
+    - `mean_pos`: ``pos``, ``vel``; mass-weighted if ``mass`` is given.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from nba.com import CenterHalo
+    >>> rng = np.random.default_rng(0)
+    >>> halo = {"pos": rng.normal(size=(20000, 3)) + [5.0, -3.0, 2.0],
+    ...         "vel": rng.normal(size=(20000, 3)), "mass": np.ones(20000)}
+    >>> com, vcom = CenterHalo(halo).shrinking_sphere_numba(softening=0.25)
+    >>> np.round(com)
+    array([ 5., -3.,  2.])
+    """
+
     def __init__(self, Halo):
         self.pos = Halo['pos']
         self.vel = Halo.get('vel', None)
@@ -348,11 +400,20 @@ class CenterHalo:
 
     def recenter(self, com, vcom=None, copy=False):
         """
-        Subtract the center-of-mass position (and velocity, if given).
+        Subtract the center position (and velocity, if given).
 
         By default this is done in place, so the arrays of the dictionary
         passed to CenterHalo are modified too. With `copy=True` new arrays
         are created and the original ones are left untouched.
+
+        Parameters
+        ----------
+        com : array-like, shape (3,)
+            Center position.
+        vcom : array-like, shape (3,), optional
+            Center velocity.
+        copy : bool
+            Create new arrays instead of modifying them in place.
         """
         if copy:
             self.pos = self.pos - com
@@ -373,16 +434,29 @@ class CenterHalo:
         stripped particles sitting in the host's potential well, not its
         center; use the shrinking sphere for satellites.
 
-        By default the particles within `rcut` of the lowest-potential
-        particle are averaged. If `npart` is given, the `npart` particles
-        with the lowest potential are averaged instead, which does not depend
-        on the noise of a single particle or on a fixed radius. `disk_pot`
-        overrides the halo potential. A warning is raised when fewer than
-        10 particles are averaged.
+        A warning is raised when fewer than 10 particles are averaged.
 
-        With `return_info`, a dict with the position of the lowest-potential
-        particle (`anchor`), its potential (`pot_min`) and the number of
-        particles averaged (`npart`) is also returned.
+        Parameters
+        ----------
+        disk_pot : np.ndarray, shape (N,), optional
+            Potential to use instead of the halo's ``'pot'``.
+        rcut : float
+            Average the particles within `rcut` of the lowest-potential
+            particle.
+        npart : int, optional
+            Average the `npart` particles with the lowest potential instead,
+            which does not depend on the noise of a single particle or on a
+            fixed radius.
+        return_info : bool
+            Also return a dict with the position of the lowest-potential
+            particle (``anchor``), its potential (``pot_min``) and the number
+            of particles averaged (``npart``).
+
+        Returns
+        -------
+        com_pos, com_vel : np.ndarray, shape (3,)
+        info : dict
+            Only if `return_info` is True.
         """
         if disk_pot is None:
             disk_pot = self.pot
@@ -412,7 +486,21 @@ class CenterHalo:
         return com, vcom, info
 
     def velocities_com(self, cm_pos: np.ndarray, r_cut: float = 20.0) -> np.ndarray:
-        """Compute the (mass-weighted, if masses are given) COM velocity within `r_cut` of `cm_pos`."""
+        """
+        Mean velocity of the particles within `r_cut` of `cm_pos`,
+        mass-weighted if masses are given.
+
+        Parameters
+        ----------
+        cm_pos : array-like, shape (3,)
+            Center position.
+        r_cut : float
+            Radius of the sphere.
+
+        Returns
+        -------
+        np.ndarray, shape (3,)
+        """
         self._require("vel")
         dist = np.linalg.norm(self.pos - cm_pos, axis=1)
         mask = dist < r_cut
@@ -423,10 +511,25 @@ class CenterHalo:
 
     def mean_pos(self, rmin: float = 0, rmax=None, center=None):
         """
-        Mean position and velocity, mass-weighted if masses are given. Only
-        particles with rmin <= r < rmax are used, where r is measured from
-        `center` (the coordinate origin if not given). `rmax` None (or 0) means
-        no upper limit, so the default uses all particles.
+        Mean position and velocity, mass-weighted if masses are given.
+
+        Only the particles with ``rmin <= r < rmax`` are used, where r is
+        measured from `center`. The default uses all particles. Useful as a
+        first guess, or for a satellite before it is stripped: debris pulls
+        the mean away from the center.
+
+        Parameters
+        ----------
+        rmin : float
+            Inner radius.
+        rmax : float or None
+            Outer radius; None (or 0) means no upper limit.
+        center : array-like, shape (3,), optional
+            Origin of the radii. Defaults to the coordinate origin.
+
+        Returns
+        -------
+        com_pos, com_vel : np.ndarray, shape (3,)
         """
         self._require("vel")
         if rmax == 0:
@@ -451,7 +554,19 @@ class CenterHalo:
 
     @staticmethod
     def mean_pos_from_arrays(pos: np.ndarray, vel: np.ndarray, mass=None):
-        """Helper to compute COM from given arrays (unweighted if `mass` is None)."""
+        """
+        Mean position and velocity of the given arrays.
+
+        Parameters
+        ----------
+        pos, vel : np.ndarray, shape (N, 3)
+        mass : np.ndarray, shape (N,), optional
+            Weights; unweighted if None.
+
+        Returns
+        -------
+        com_pos, com_vel : np.ndarray, shape (3,)
+        """
         return _weighted_mean(pos, mass), _weighted_mean(vel, mass)
 
     def shrinking_sphere(self, delta=None, *, rcut_vel=20.0, min_npart=1000, center0=None,

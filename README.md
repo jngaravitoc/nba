@@ -3,6 +3,11 @@
 N-body Analysis (NBA) is a Python package to analyze N-body simulations of galaxies:
 halo centering, density and kinematic profiles, orbits, and simple sky maps.
 
+**Documentation:** [`docs/`](docs/). It covers installation, getting started, a user guide for the
+snapshot readers ([`nba.ios`](docs/ios/index.rst)) and halo centering ([`nba.com`](docs/com/index.rst))
+with their API, and the tutorials. It is not hosted online yet; see [Documentation](#documentation) to
+build it.
+
 ## Installation
 
 ```
@@ -17,6 +22,7 @@ Python >= 3.10 is required. The `devel` branch is the development version (0.4.0
 ```
 $ python -m pip install ".[extra]"   # healpy, pynbody, FIRE tools (gizmo_analysis, halo_analysis)
 $ python -m pip install ".[dev]"     # pytest, flake8
+$ python -m pip install ".[docs]"    # Sphinx and extensions, to build the documentation
 ```
 
 ## Quick start
@@ -39,7 +45,7 @@ edges = np.linspace(0, 300, 100)
 r, rho = nba.structure.Profiles(halo['pos'], edges).density(mass=halo['mass'])
 ```
 
-More examples are in [`tutorials/`](tutorials/).
+More examples are in [`tutorials/`](tutorials/) and in the [documentation](#documentation).
 
 ## Centering halos and computing orbits
 
@@ -114,6 +120,22 @@ Many routines can be parallelized with [Schwimmbad](https://schwimmbad.readthedo
 (`pip install schwimmbad`). See [compute_orbit_parallel.py](tutorials/compute_orbit_parallel.py)
 for an example that computes the orbits of the MW and the LMC.
 
+## Documentation
+
+The documentation is in [`docs/`](docs/), built with Sphinx.
+
+```
+$ python -m pip install -e ".[docs]"
+$ make -C docs html
+```
+
+Then open `docs/_build/html/index.html` in a browser. So far it documents
+[`nba.ios`](docs/ios/index.rst) and [`nba.com`](docs/com/index.rst); the other modules will follow.
+The tutorial notebooks shown in it ([`Reading_GC21_MWLMC_snapshots.ipynb`](tutorials/Reading_GC21_MWLMC_snapshots.ipynb),
+[`lmc_centering.ipynb`](tutorials/lmc_centering.ipynb)) need the GC21 snapshots, so they are committed with
+their outputs and not run during the build; [`tutorials/README.md`](tutorials/README.md) explains how to
+re-run them.
+
 ## Tests
 
 ```
@@ -124,6 +146,7 @@ $ pytest
 `tests/test_centering_lmc.py` tests the centering on a real subsample of the LMC in GC21 MWLMC5. Its particle
 file (42 MB) is not in the repository, and these tests are skipped without it. To run them, set
 `NBA_TEST_DATA` to the folder that holds the file. See [`tests/data/README.md`](tests/data/README.md).
+The examples in the documentation are tested with `pytest --doctest-plus --doctest-rst docs/`.
 
 ## Known issues
 
