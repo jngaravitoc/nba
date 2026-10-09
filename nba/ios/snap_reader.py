@@ -8,11 +8,6 @@ from typing import Union, List, Dict
 import numpy as np
 import h5py
 
-# Set up logger
-logging.basicConfig(
-    level=logging.INFO,
-    format='[%(levelname)s] %(message)s'
-)
 logger = logging.getLogger(__name__)
 
 class ReadGadgetSim:
@@ -96,7 +91,7 @@ class ReadGadgetSim:
             for key in header_keys:
                 if key in header:
                     metadata[key] = header[key]
-                    logger.info(f"Header '{key}': {metadata[key]}")
+                    logger.debug(f"Header '{key}': {metadata[key]}")
 
         return metadata
 
@@ -186,14 +181,18 @@ class ReadGC21:
     ----------
     full_snap_path : str
         Full path to the snapshot file.
+    npart_mw : int
+        Number of MW dark matter particles; they have the lowest IDs.
     """
+
+    npart_mw = 100_000_000
 
     def __init__(self, path: str, snapname: str):
         self.path = path
         self.snapname = snapname
         self.full_snap_path = os.path.join(self.path, self.snapname)
 
-    def read_halo(self, quantity, halo, ptype, randomsample=None):
+    def read_halo(self, quantity, halo, ptype, randomsample=None, seed=None):
         """
         Load particle data for a specified halo ("MW" or "LMC") and desired quantities.
 
@@ -203,6 +202,10 @@ class ReadGC21:
             Particle properties to read, e.g., ['pos', 'vel']. Will automatically include 'pid' for sorting.
         halo : str
             Which halo to return particles from: 'MW' or 'LMC'.
+        randomsample : int or None
+            Number of particles drawn at random (without replacement) from the selection.
+        seed : int or None
+            Seed of the random generator used for ``randomsample``.
 
         Returns
         -------
@@ -228,40 +231,26 @@ class ReadGC21:
         #GC21_header = GC21.read_header()
         GC21_dm_data = GC21.read_snapshot(quantity=quantity, ptype=ptype)
 
-        npart_mw = 100_000_000
-        #npart_sat = GC21_header['NumPart_Total'][1] - npart_mw
-        if ptype=='dm':
-
-            if halo == 'MW':
-                halo_ids = np.sort(GC21_dm_data['pid'])[:npart_mw]
-            elif halo == 'LMC':
-                halo_ids = np.sort(GC21_dm_data['pid'])[npart_mw:]
+        npart_mw = self.npart_mw
+        if ptype == 'dm' and halo in ('MW', 'LMC'):
+            # The MW particles have the npart_mw lowest IDs: split at the
+            # smallest LMC ID, found without sorting all the IDs
+            pid = GC21_dm_data['pid']
+            if len(pid) > npart_mw:
+                cut = np.partition(pid, npart_mw)[npart_mw]
+                mask = pid < cut if halo == 'MW' else pid >= cut
             else:
-                halo_ids = GC21_dm_data['pid']
+                mask = np.full(len(pid), halo == 'MW')
+            for q in quantity:
+                GC21_dm_data[q] = GC21_dm_data[q][mask]
 
-            # Build a boolean mask from IDs
-            mask = np.isin(GC21_dm_data['pid'], halo_ids)
+        if randomsample:
+            npart = len(GC21_dm_data[quantity[0]])
+            rng = np.random.default_rng(seed)
+            idx = np.sort(rng.choice(npart, min(randomsample, npart), replace=False))
+            for q in quantity:
+                GC21_dm_data[q] = GC21_dm_data[q][idx]
 
-            if randomsample:
-                npart = len(halo_ids)
-                mask_rand = np.zeros(npart, dtype=bool)
-                idx_rand = np.random.randint(0, npart, randomsample)
-                mask_rand[idx_rand] = True
-                for q in quantity:
-                    GC21_dm_data[q] = GC21_dm_data[q][mask][mask_rand]
-            else:
-                for q in quantity:
-                    GC21_dm_data[q] = GC21_dm_data[q][mask]
-        
-        else:
-            if randomsample:
-                npart = len(GC21_dm_data[quantity[0]])
-                mask_rand = np.zeros(npart, dtype=bool)
-                idx_rand = np.random.randint(0, npart, randomsample)
-                mask_rand[idx_rand] = True
-                for q in quantity:
-                    GC21_dm_data[q] = GC21_dm_data[q][mask_rand]
-           
         return GC21_dm_data
 
 class ReadSheng24:

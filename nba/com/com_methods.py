@@ -82,7 +82,7 @@ def _ssphere_power(xyz, mass, com_pos, radius, delta, nmin, r2_min, prune=True):
     c = np.array(com_pos, dtype=np.float64)
     ref = c.copy()
     xs, ms, ds = _sort_by_distance(xyz, mass, ref)
-    npart = np.searchsorted(ds, radius, side="right")
+    npart = np.searchsorted(ds, radius, side="left")
     niter = 0
     while True:
         new_radius = 0.975 * radius
@@ -142,7 +142,7 @@ def _ssphere_kernel(xyz, mass, com_pos, radius, delta, nmin, r2_min, prune=True)
     c = com_pos.astype(np.float64)
     ref = c.copy()
     xs, ms, ds = _sort_by_distance_numba(xyz, mass, ref)
-    npart = np.searchsorted(ds, radius, side="right")
+    npart = np.searchsorted(ds, radius, side="left")
     niter = 0
     while True:
         new_radius = 0.975 * radius
@@ -189,13 +189,13 @@ def _ssphere_kernel(xyz, mass, com_pos, radius, delta, nmin, r2_min, prune=True)
             return c, npart, radius, niter, 1  # _STOP_DELTA
 
 
-def _com_velocity(xyz, vxyz, mass, center, rcut_vel, nvel):
+def _com_velocity(vxyz, mass, r2, rcut_vel, nvel):
     """
-    Mass-weighted velocity of the `nvel` particles closest to `center`, or of
-    all particles within `rcut_vel` of it if `nvel` is None. Returns the
-    velocity (NaN if no particles are selected) and the number of particles.
+    Mass-weighted velocity of the `nvel` particles closest to the center, or of
+    all particles within `rcut_vel` of it if `nvel` is None, given the squared
+    distances `r2` to the center. Returns the velocity and the number of
+    particles, and raises a ValueError if no particles are selected.
     """
-    r2 = np.sum((xyz - center)**2, axis=1)
     if nvel is not None:
         if nvel <= 0:
             raise ValueError("nvel must be positive")
@@ -204,30 +204,46 @@ def _com_velocity(xyz, vxyz, mass, center, rcut_vel, nvel):
         sel = r2 < rcut_vel**2
     vel, m = vxyz[sel], mass[sel]
     if len(m) == 0:
-        return np.full(3, np.nan), 0
+        raise ValueError(f"No particles found within rcut_vel={rcut_vel} of the center")
     return _weighted_mean(vel, m), len(m)
 
 
 def _shrinking_sphere(loop, xyz, vxyz, mass, delta, rcut_vel, min_npart, softening,
-                      center0, r0, nvel, return_info):
+                      center0, r0, nvel, rvel_factor, npart_frac, return_info):
     """Shrinking sphere driver shared by the NumPy and Numba versions."""
-    com, radius = _initial_sphere(xyz, mass, center0, r0)
-    # Power et al. (2003): min_npart particles or 1% of the halo, whichever is smaller
-    nmin = max(1, min(min_npart, int(0.01 * len(mass))))
+    if nvel is not None and rvel_factor is not None:
+        raise ValueError("Give at most one of nvel and rvel_factor")
+    if rvel_factor is not None and rvel_factor <= 0:
+        raise ValueError("rvel_factor must be positive")
     if softening is not None and softening < 0:
         raise ValueError("softening must be non-negative")
+    com, radius = _initial_sphere(xyz, mass, center0, r0)
+    # Power et al. (2003): min_npart particles or 1% of the halo, whichever is smaller
+    nmin = min_npart if npart_frac is None else min(min_npart, int(npart_frac * len(mass)))
+    nmin = max(1, nmin)
     r2_min = 0.0 if softening is None else float(4 * softening)**2
-    com, npart, radius, niter, stop = loop(xyz, mass, com, radius,
+    # The loop's particle count is that of the last sphere, around the previous
+    # center; info recounts around the returned center (see below)
+    com, _, radius, niter, stop = loop(xyz, mass, com, radius,
                                            -1.0 if delta is None else float(delta),
                                            nmin, r2_min)
-    com_vel, n_vel = _com_velocity(xyz, vxyz, mass, com, rcut_vel, nvel)
+    r2 = np.sum((xyz - com)**2, axis=1)
+    if rvel_factor is not None:
+        rcut_vel = rvel_factor * radius
+    com_vel, n_vel = _com_velocity(vxyz, mass, r2, rcut_vel, nvel)
     if not return_info:
         return com, com_vel
+    # npart and density describe the same sphere: `radius` around the returned center
+    inside = np.sqrt(r2) < radius
+    npart = np.count_nonzero(inside)
+    mass_in = np.sum(mass[inside], dtype=np.float64)
     info = {
         "radius": float(radius),
         "npart": int(npart),
+        "nmin": int(nmin),
         "niter": niter,
         "stop": _STOP_NAMES[stop],
+        "density": float(mass_in / (4 / 3 * np.pi * radius**3)),
         "nvel": n_vel,
     }
     return com, com_vel, info
@@ -244,12 +260,21 @@ _SSPHERE_DOC = """
         particles. Each step shrinks the radius by only 2.5%, so the center
         moves little per step even when it is far from converged; a delta
         stop can end close to the global mean when a satellite is present.
+
+    All other parameters are keyword-only.
+
     rcut_vel : float
         Radius around the center used to compute the COM velocity.
     min_npart : int
         The sphere stops shrinking before it holds fewer than `min_npart`
-        particles or 1% of the halo particles, whichever is smaller (Power et
-        al. 2003).
+        particles or a fraction `npart_frac` of the halo particles, whichever
+        is smaller.
+    npart_frac : float or None
+        Default 0.01, as in Power et al. (2003). None removes this cap, so
+        that `min_npart` is used as given: a larger final sphere gives a
+        steadier center when the core of a disrupting satellite loses its
+        density, but departs from Power et al. The value used is returned in
+        `info['nmin']`.
     softening : float, optional
         Gravitational softening length. The sphere stops shrinking before its
         radius drops below 4 * softening, where the softened cusp turns into a
@@ -264,11 +289,21 @@ _SSPHERE_DOC = """
         If given, the COM velocity is computed from the `nvel` particles
         closest to the center instead of those within `rcut_vel`, which
         adapts the velocity region to the size of the halo.
+    rvel_factor : float, optional
+        If given, the COM velocity is computed from the particles within
+        `rvel_factor` times the final sphere radius instead of `rcut_vel`, so
+        that it describes the same region as the center. Cannot be combined
+        with `nvel`.
     return_info : bool
-        Also return a dict with the final sphere radius (`radius`), its
-        number of particles (`npart`), the number of steps (`niter`), what
-        stopped it (`stop`: 'min_npart', 'softening' or 'delta') and the number of
-        particles used for the velocity (`nvel`).
+        Also return a dict with the final sphere radius (`radius`), the
+        number of particles (`npart`) and mean density (`density`) within
+        `radius` of the returned center, the minimum number of particles used
+        (`nmin`), the number of steps (`niter`), what stopped it (`stop`:
+        'min_npart', 'softening' or 'delta') and the number of particles used
+        for the velocity (`nvel`). The stopping test counts the particles of
+        the last sphere, around the previous center, so `npart` can differ
+        from that count (and from `nmin`) by a few particles. A jump in `radius` or a drop in `density`
+        between snapshots flags a center that is no longer well defined.
 
     The old names `minNpart` (and `rcut` in the Numba version) are accepted
     with a DeprecationWarning.
@@ -278,20 +313,23 @@ _SSPHERE_DOC = """
     com_pos : np.ndarray, shape (3,)
         Center of mass position.
     com_vel : np.ndarray, shape (3,)
-        Center of mass velocity (NaN if no particles are selected).
+        Center of mass velocity. A ValueError is raised if no particles are
+        selected for it.
     info : dict
         Only if `return_info` is True.
 """
 
 
-def ssphere_numba(xyz, vxyz, mass, delta=None, rcut_vel=20.0, min_npart=1000,
-                  center0=None, r0=None, nvel=None, return_info=False, softening=None):
+def ssphere_numba(xyz, vxyz, mass, delta=None, *, rcut_vel=20.0, min_npart=1000,
+                  center0=None, r0=None, nvel=None, rvel_factor=None, npart_frac=0.01,
+                  return_info=False, softening=None):
     """
     Numba-accelerated shrinking sphere on arrays `xyz`, `vxyz` (N, 3) and
     `mass` (N,). See `CenterHalo.shrinking_sphere` for the other parameters.
     """
     return _shrinking_sphere(_ssphere_kernel, xyz, vxyz, mass, delta, rcut_vel, min_npart,
-                             softening, center0, r0, nvel, return_info)
+                             softening, center0, r0, nvel, rvel_factor, npart_frac,
+                             return_info)
 
 
 
@@ -326,15 +364,25 @@ class CenterHalo:
             else:
                 self.vel -= vcom
 
-    def min_potential(self, disk_pot=None, rcut: float = 2.0, npart=None):
+    def min_potential(self, disk_pot=None, rcut: float = 2.0, npart=None, return_info=False):
         """
         Center-of-mass position and velocity near the potential minimum.
+
+        Use it for host galaxies only. The snapshot potential is the total
+        potential, so for a satellite the lowest-potential particles are its
+        stripped particles sitting in the host's potential well, not its
+        center; use the shrinking sphere for satellites.
 
         By default the particles within `rcut` of the lowest-potential
         particle are averaged. If `npart` is given, the `npart` particles
         with the lowest potential are averaged instead, which does not depend
         on the noise of a single particle or on a fixed radius. `disk_pot`
-        overrides the halo potential.
+        overrides the halo potential. A warning is raised when fewer than
+        10 particles are averaged.
+
+        With `return_info`, a dict with the position of the lowest-potential
+        particle (`anchor`), its potential (`pot_min`) and the number of
+        particles averaged (`npart`) is also returned.
         """
         if disk_pot is None:
             disk_pot = self.pot
@@ -342,19 +390,26 @@ class CenterHalo:
             raise ValueError("min_potential needs 'pot' in the halo or a disk_pot argument")
         self._require("vel")
 
+        imin = np.argmin(disk_pot)
         if npart is not None:
             if npart <= 0:
                 raise ValueError("npart must be positive")
             npart = min(npart, len(disk_pot))
             idx = np.argpartition(disk_pot, npart - 1)[:npart]
         else:
-            center = self.pos[np.argmin(disk_pot)]
             # Distance to potential minimum
-            r = np.linalg.norm(self.pos - center, axis=1)
+            r = np.linalg.norm(self.pos - self.pos[imin], axis=1)
             idx = np.where(r < rcut)[0]
+        if len(idx) < 10:
+            warnings.warn(f"min_potential averages only {len(idx)} particles", stacklevel=2)
 
         weights = None if self.mass is None else self.mass[idx]
-        return _weighted_mean(self.pos[idx], weights), _weighted_mean(self.vel[idx], weights)
+        com, vcom = _weighted_mean(self.pos[idx], weights), _weighted_mean(self.vel[idx], weights)
+        if not return_info:
+            return com, vcom
+        info = {"anchor": np.array(self.pos[imin], dtype=np.float64),
+                "pot_min": float(disk_pot[imin]), "npart": len(idx)}
+        return com, vcom, info
 
     def velocities_com(self, cm_pos: np.ndarray, r_cut: float = 20.0) -> np.ndarray:
         """Compute the (mass-weighted, if masses are given) COM velocity within `r_cut` of `cm_pos`."""
@@ -366,51 +421,53 @@ class CenterHalo:
         weights = None if self.mass is None else self.mass[mask]
         return _weighted_mean(self.vel[mask], weights)
 
-    def mean_pos(self, rmin: float = 0, rmax: float = 0, center=None):
+    def mean_pos(self, rmin: float = 0, rmax=None, center=None):
         """
-        Mass-weighted mean position and velocity. If rmax > 0, only particles
-        with rmin <= r < rmax are used, where r is measured from `center`
-        (the coordinate origin if not given).
+        Mean position and velocity, mass-weighted if masses are given. Only
+        particles with rmin <= r < rmax are used, where r is measured from
+        `center` (the coordinate origin if not given). `rmax` None (or 0) means
+        no upper limit, so the default uses all particles.
         """
-        self._require("vel", "mass")
-        if rmin < 0 or rmax < 0:
+        self._require("vel")
+        if rmax == 0:
+            rmax = None
+        if rmin < 0 or (rmax is not None and rmax < 0):
             raise ValueError("rmin and rmax must be non-negative")
-        if rmin > rmax:
+        if rmax is not None and rmin > rmax:
             raise ValueError("rmin must be less than or equal to rmax")
 
-        if rmin == 0 and rmax == 0:
-            weights = self.mass
-            pos = self.pos
-            vel = self.vel
-        else:
-            origin = np.zeros(3) if center is None else np.asarray(center)
-            r = np.linalg.norm(self.pos - origin, axis=1)
-            mask = (r >= rmin) & (r < rmax)
-            if not np.any(mask):
-                raise ValueError("No particles found in the rmin–rmax range")
-            weights = self.mass[mask]
-            pos = self.pos[mask]
-            vel = self.vel[mask]
+        if rmin == 0 and rmax is None:
+            return self.mean_pos_from_arrays(self.pos, self.vel, self.mass)
 
-        return self.mean_pos_from_arrays(pos, vel, weights)
+        origin = np.zeros(3) if center is None else np.asarray(center)
+        r = np.linalg.norm(self.pos - origin, axis=1)
+        mask = r >= rmin
+        if rmax is not None:
+            mask &= r < rmax
+        if not np.any(mask):
+            raise ValueError("No particles found in the rmin–rmax range")
+        weights = None if self.mass is None else self.mass[mask]
+        return self.mean_pos_from_arrays(self.pos[mask], self.vel[mask], weights)
 
     @staticmethod
-    def mean_pos_from_arrays(pos: np.ndarray, vel: np.ndarray, mass: np.ndarray):
-        """Helper to compute COM from given arrays."""
+    def mean_pos_from_arrays(pos: np.ndarray, vel: np.ndarray, mass=None):
+        """Helper to compute COM from given arrays (unweighted if `mass` is None)."""
         return _weighted_mean(pos, mass), _weighted_mean(vel, mass)
 
-    def shrinking_sphere(self, delta=None, min_npart=1000, rcut_vel=20.0, center0=None,
-                         r0=None, nvel=None, return_info=False, softening=None, **kwargs):
+    def shrinking_sphere(self, delta=None, *, rcut_vel=20.0, min_npart=1000, center0=None,
+                         r0=None, nvel=None, rvel_factor=None, npart_frac=0.01,
+                         return_info=False, softening=None, **kwargs):
         min_npart = _renamed(kwargs, "minNpart", "min_npart", min_npart)
         if kwargs:
             raise TypeError(f"Unexpected keyword arguments: {list(kwargs)}")
         self._require("vel", "mass")
         return _shrinking_sphere(_ssphere_power, self.pos, self.vel, self.mass, delta,
                                  rcut_vel, min_npart, softening, center0, r0, nvel,
-                                 return_info)
+                                 rvel_factor, npart_frac, return_info)
 
-    def shrinking_sphere_numba(self, delta=None, rcut_vel=20.0, min_npart=1000, center0=None,
-                               r0=None, nvel=None, return_info=False, softening=None, **kwargs):
+    def shrinking_sphere_numba(self, delta=None, *, rcut_vel=20.0, min_npart=1000, center0=None,
+                               r0=None, nvel=None, rvel_factor=None, npart_frac=0.01,
+                               return_info=False, softening=None, **kwargs):
         min_npart = _renamed(kwargs, "minNpart", "min_npart", min_npart)
         rcut_vel = _renamed(kwargs, "rcut", "rcut_vel", rcut_vel)
         if kwargs:
@@ -418,7 +475,8 @@ class CenterHalo:
         self._require("vel", "mass")
         return _shrinking_sphere(_ssphere_kernel, self.pos, self.vel, self.mass, delta,
                                  rcut_vel, min_npart, softening, center0, r0, nvel,
-                                 return_info)
+                                 rvel_factor, npart_frac, return_info)
 
-    shrinking_sphere.__doc__ = _SSPHERE_DOC
+    shrinking_sphere.__doc__ = ("NumPy version, kept as a reference: `shrinking_sphere_numba` gives\n"
+                                "    the same result about 13x faster on large halos.\n" + _SSPHERE_DOC)
     shrinking_sphere_numba.__doc__ = "Numba-accelerated version of `shrinking_sphere`.\n" + _SSPHERE_DOC

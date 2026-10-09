@@ -260,3 +260,100 @@ def test_shrinking_sphere_radius_sequence(halo, method):
     _, _, info = getattr(CenterHalo(data), method)(center0=offset, r0=3.0, return_info=True)
     assert info["niter"] > 0
     assert info["radius"] == pytest.approx(3.0 * 0.975**info["niter"])
+
+
+@pytest.mark.parametrize("method", ["shrinking_sphere", "shrinking_sphere_numba"])
+def test_shrinking_sphere_keyword_only(halo, method):
+    # positional arguments after delta used to mean different things in each version
+    data, _, _ = halo
+    with pytest.raises(TypeError):
+        getattr(CenterHalo(data), method)(None, 500)
+
+
+@pytest.mark.parametrize("method", ["shrinking_sphere", "shrinking_sphere_numba"])
+def test_shrinking_sphere_empty_velocity_region(halo, method):
+    data, _, _ = halo
+    with pytest.raises(ValueError):
+        getattr(CenterHalo(data), method)(rcut_vel=0.0)
+
+
+@pytest.mark.parametrize("method", ["shrinking_sphere", "shrinking_sphere_numba"])
+def test_shrinking_sphere_immediate_stop_npart(halo, method):
+    # no shrinking step: npart counts r < R, as the loop does
+    data, _, _ = halo
+    n = len(data["mass"])
+    com, _, info = getattr(CenterHalo(data), method)(min_npart=n, npart_frac=None,
+                                                     return_info=True)
+    assert info["niter"] == 0
+    r = np.linalg.norm(data["pos"] - com, axis=1)
+    assert info["npart"] == np.count_nonzero(r < info["radius"]) == n - 1
+
+
+@pytest.mark.parametrize("method", ["shrinking_sphere", "shrinking_sphere_numba"])
+def test_shrinking_sphere_npart_frac(halo, method):
+    data, _, _ = halo  # 20000 particles: 1% = 200
+    _, _, info = getattr(CenterHalo(data), method)(return_info=True)
+    assert info["nmin"] == 200
+    _, _, info = getattr(CenterHalo(data), method)(npart_frac=None, return_info=True)
+    assert info["nmin"] == 1000
+    assert 1000 <= info["npart"] < 1000 / 0.975**3
+
+
+@pytest.mark.parametrize("method", ["shrinking_sphere", "shrinking_sphere_numba"])
+def test_shrinking_sphere_rvel_factor(halo, method):
+    data, _, voffset = halo
+    com, vcom, info = getattr(CenterHalo(data), method)(rvel_factor=3.0, return_info=True)
+    r = np.linalg.norm(data["pos"] - com, axis=1)
+    inside = r < 3.0 * info["radius"]
+    assert info["nvel"] == np.count_nonzero(inside)
+    np.testing.assert_allclose(vcom, data["vel"][inside].mean(axis=0))
+    with pytest.raises(ValueError):
+        getattr(CenterHalo(data), method)(rvel_factor=3.0, nvel=100)
+    with pytest.raises(ValueError):
+        getattr(CenterHalo(data), method)(rvel_factor=0.0)
+
+
+@pytest.mark.parametrize("method", ["shrinking_sphere", "shrinking_sphere_numba"])
+def test_shrinking_sphere_density(halo, method):
+    data, _, _ = halo
+    com, _, info = getattr(CenterHalo(data), method)(return_info=True)
+    r = np.linalg.norm(data["pos"] - com, axis=1)
+    mass_in = data["mass"][r < info["radius"]].sum()
+    assert info["density"] == pytest.approx(mass_in / (4 / 3 * np.pi * info["radius"]**3))
+
+
+def test_mean_pos_rmin_only(halo):
+    data, offset, _ = halo
+    com, _ = CenterHalo(data).mean_pos(rmin=2, center=offset)
+    r = np.linalg.norm(data["pos"] - offset, axis=1)
+    np.testing.assert_allclose(com, data["pos"][r >= 2].mean(axis=0))
+
+
+def test_mean_pos_without_mass(halo):
+    data, _, _ = halo
+    com, vcom = CenterHalo({"pos": data["pos"], "vel": data["vel"]}).mean_pos()
+    np.testing.assert_allclose(com, data["pos"].mean(axis=0))
+    np.testing.assert_allclose(vcom, data["vel"].mean(axis=0))
+
+
+def test_min_potential_info(halo):
+    data, offset, _ = halo
+    pot = np.linalg.norm(data["pos"] - offset, axis=1)
+    com, _, info = CenterHalo(dict(data, pot=pot)).min_potential(rcut=1.0, return_info=True)
+    np.testing.assert_array_equal(info["anchor"], data["pos"][np.argmin(pot)])
+    assert info["pot_min"] == pot.min()
+    r = np.linalg.norm(data["pos"] - info["anchor"], axis=1)
+    assert info["npart"] == np.count_nonzero(r < 1.0)
+    with pytest.warns(UserWarning, match="only 1 particles"):
+        CenterHalo(dict(data, pot=pot)).min_potential(rcut=1e-9)
+
+
+@pytest.mark.parametrize("method", ["shrinking_sphere", "shrinking_sphere_numba"])
+@pytest.mark.parametrize("kwargs", [{}, {"softening": 0.25}, {"min_npart": 5000, "npart_frac": None}])
+def test_shrinking_sphere_npart_and_density_same_sphere(halo, method, kwargs):
+    # both describe the particles within `radius` of the returned center
+    data, _, _ = halo  # unit masses
+    com, _, info = getattr(CenterHalo(data), method)(return_info=True, **kwargs)
+    r = np.linalg.norm(data["pos"] - com, axis=1)
+    assert info["npart"] == np.count_nonzero(r < info["radius"])
+    assert info["density"] * 4 / 3 * np.pi * info["radius"]**3 == pytest.approx(info["npart"])
