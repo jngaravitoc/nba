@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 Versions before 0.3.0 were originally numbered 1.0.1, 1.1 and 1.2; they were renumbered 0.1.0,
 0.1.1 and 0.2.0 to match the package metadata and the pre-1.0 state of the API.
 
+## [Unreleased]
+### Changed
+- `CenterHalo.shrinking_sphere`, `shrinking_sphere_numba` and `ssphere_numba`: all parameters
+  after `delta` are keyword-only (the two methods took `min_npart` and `rcut_vel` in a different
+  order, so positional calls gave different results)
+- An empty velocity region in the shrinking sphere raises a ValueError instead of returning NaN
+- `CenterHalo.mean_pos`: `rmax=None` (the new default) means no upper limit, so `rmin` alone can
+  be given; masses are optional
+- `iter_orbit`/`orbit` refuse `min_potential` and `diskpot` for `halo='LMC'`: the snapshot
+  potential is the total potential, so for a satellite they find the host's potential well
+- `ReadGC21.read_halo` splits the MW and LMC with an O(N) ID threshold instead of sorting all IDs
+- `tutorials/compute_lmc_orbits.py` no longer runs `min_potential`; it uses `softening=0.08` and
+  `r0=15` by default
+### Added
+- Shrinking sphere: `npart_frac` (None removes the 1% cap on `min_npart`), `rvel_factor` (velocity
+  from a multiple of the final radius) and `nmin`/`density` in `info`
+- `CenterHalo.min_potential(return_info=True)` and a warning when fewer than 10 particles are
+  averaged
+- `iter_orbit`: `min_npart`, `npart_frac`, `nvel`, `rvel_factor`, `time_offset`, `jump_factor`
+  and `return_info`; warnings when the center jumps, the time decreases or no softening is given
+- `ReadGC21.read_halo(seed=...)`
+### Fixed
+- The shrinking sphere's `npart` uses r < R, as the loop does, when it stops before shrinking
+- `ReadGC21.read_halo(randomsample=n)` returns exactly n particles (it drew with replacement)
+- `nba.ios.snap_reader` no longer calls `logging.basicConfig` on import; header fields are logged
+  at DEBUG level
+
 ## [0.3.0] - 2026-10-02
 ### Added
 - Test suite (`tests/`) and flake8 configuration
