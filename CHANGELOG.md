@@ -5,54 +5,60 @@ All notable changes to this project will be documented in this file.
 Versions before 0.3.0 were originally numbered 1.0.1, 1.1 and 1.2; they were renumbered 0.1.0,
 0.1.1 and 0.2.0 to match the package metadata and the pre-1.0 state of the API.
 
-## [Unreleased]
-### Changed
-- `tutorials/Reading_GC21_MWLMC_snapshots.ipynb` and `tutorials/lmc_centering.ipynb` were rewritten for the
-  current API and are committed with their outputs, since the documentation shows them without running them
-  (see `tutorials/README.md`); `nba.com` exports `ssphere_numba`; numpydoc docstrings in `nba.ios` and
-  `nba.com`
-- Shrinking sphere `info['npart']` counts the particles within `info['radius']` of the returned
-  center, like `info['density']` (it counted the last sphere, around the previous center)
-- `tutorials/compute_lmc_orbits.py` defaults to `rvel_factor=5` and `min_density_ratio=0.01`, as
-  recommended by the MWLMC5_b0 re-test
-- `pyyaml` is a dependency (ECSV orbit files)
-- `CenterHalo.shrinking_sphere`, `shrinking_sphere_numba` and `ssphere_numba`: all parameters
-  after `delta` are keyword-only (the two methods took `min_npart` and `rcut_vel` in a different
-  order, so positional calls gave different results)
+## [0.4.0] - 2026-10-09
+### Breaking changes
+- `CenterHalo.shrinking_sphere`, `shrinking_sphere_numba` and `ssphere_numba`: all parameters after
+  `delta` are keyword-only (the two methods took `min_npart` and `rcut_vel` in a different order, so
+  positional calls gave different results)
 - An empty velocity region in the shrinking sphere raises a ValueError instead of returning NaN
-- `CenterHalo.mean_pos`: `rmax=None` (the new default) means no upper limit, so `rmin` alone can
-  be given; masses are optional
-- `iter_orbit`/`orbit` refuse `min_potential` and `diskpot` for `halo='LMC'`: the snapshot
-  potential is the total potential, so for a satellite they find the host's potential well
-- `ReadGC21.read_halo` splits the MW and LMC with an O(N) ID threshold instead of sorting all IDs
-- `tutorials/compute_lmc_orbits.py` no longer runs `min_potential`; it uses `softening=0.08` and
-  `r0=15` by default
+- `iter_orbit`/`orbit` refuse `min_potential` and `diskpot` for `halo='LMC'`: the snapshot potential is
+  the total potential, so for a satellite they find the host's potential well
+- Shrinking sphere `info['npart']` counts the particles within `info['radius']` of the returned center,
+  like `info['density']` (it counted the last sphere, around the previous center)
+- `nba.ios.snap_reader` no longer calls `logging.basicConfig` on import; header fields are logged at
+  DEBUG level
+- `tutorials/compute_lmc_orbits.py` requires the snapshot folder, no longer runs `min_potential`, and
+  defaults to `softening=0.08`, `r0=15`, `rvel_factor=5` and `min_density_ratio=0.01`
+
 ### Added
-- Documentation in `docs/` (Sphinx, laid out like gala's): installation, getting started, user guide pages
-  for `nba.ios` and `nba.com` with tested examples, API pages, the tutorials and this changelog; build with
-  `make -C docs html` after `pip install -e ".[docs]"`
-- `nba.orbits.write_orbit`, `read_orbit` and `provenance`: self-describing ECSV orbit files with
-  units, per-snapshot diagnostics, every parameter as used, the warnings and the provenance (nba
-  commit, environment, command); `orbit(..., outfile=...)` writes one per method
-- `iter_orbit`: `velocity_tol`/`velocity_window` warn when a shrinking sphere center moves
-  inconsistently with its velocity for several snapshots (with `nvel` or `rvel_factor`), which
-  catches a center drifting after the satellite has dissolved; `min_density_ratio` warns when the
-  density in the final sphere falls below a fraction of its first value; `info` gains
-  `velocity_error` and `density_ratio`; `warning_log` records the warnings
-- `tests/test_centering_lmc.py`: tests on a real LMC subsample (MWLMC5_b0, snapshot 150), skipped
-  unless the particle file is found (`NBA_TEST_DATA`, see `tests/data/README.md`)
-- Shrinking sphere: `npart_frac` (None removes the 1% cap on `min_npart`), `rvel_factor` (velocity
-  from a multiple of the final radius) and `nmin`/`density` in `info`
-- `CenterHalo.min_potential(return_info=True)` and a warning when fewer than 10 particles are
-  averaged
-- `iter_orbit`: `min_npart`, `npart_frac`, `nvel`, `rvel_factor`, `time_offset`, `jump_factor`
-  and `return_info`; warnings when the center jumps, the time decreases or no softening is given
-- `ReadGC21.read_halo(seed=...)`
+- Documentation (Sphinx), published at https://jngaravitoc.github.io/nba/ from `main` by a GitHub
+  Actions workflow: installation, getting started, user guide pages for `nba.ios` and `nba.com` with
+  tested examples, API pages, the tutorials and this changelog. Build it locally with
+  `make -C docs html` after `pip install -e ".[docs]"` (new `docs` extra)
+- `nba.orbits.write_orbit`, `read_orbit` and `provenance`: self-describing ECSV orbit files with units,
+  per-snapshot diagnostics, every parameter as used, the warnings and the provenance (nba version and
+  commit; the user, host and command only with `full_provenance=True`). `orbit(..., outfile=...)`
+  writes one per method
+- `iter_orbit` checks: warnings when the center jumps (`jump_factor`), moves inconsistently with its
+  velocity for several snapshots (`velocity_tol`, `velocity_window`; with `nvel` or `rvel_factor`),
+  or its final sphere falls below a fraction of its initial density (`min_density_ratio`); also when
+  the time decreases or no softening is given. `warning_log` records the warnings
+- `iter_orbit` options: `min_npart`, `npart_frac`, `nvel`, `rvel_factor`, `time_offset` (restarts that
+  reset the time) and `return_info` (`info` gains `velocity_error` and `density_ratio`)
+- Shrinking sphere: `npart_frac` (None removes the 1% cap on `min_npart`), `rvel_factor` (velocity from
+  a multiple of the final radius), and `nmin` and `density` in `info`
+- `CenterHalo.min_potential(return_info=True)`, and a warning when fewer than 10 particles are averaged
+- `CenterHalo.mean_pos`: `rmax=None` (the new default) means no upper limit, so `rmin` alone can be
+  given; masses are optional
+- `ReadGC21.read_halo(seed=...)`; `ReadGC21.npart_mw` as a class attribute
+- `nba.com` exports `ssphere_numba`
+- `tests/test_centering_lmc.py`: tests on a real LMC subsample (MWLMC5_b0, snapshot 150), skipped unless
+  the particle file is found (`NBA_TEST_DATA`, see `tests/data/README.md`)
+
+### Changed
+- `ReadGC21.read_halo` splits the MW and LMC with an O(N) ID threshold instead of sorting all IDs
+- `tutorials/Reading_GC21_MWLMC_snapshots.ipynb` and `tutorials/lmc_centering.ipynb` were rewritten for
+  the current API and are committed with their outputs, since the documentation shows them without
+  running them (see `tutorials/README.md`)
+- numpydoc docstrings in `nba.ios` and `nba.com`
+- `pyyaml` is a dependency (ECSV orbit files)
+- Committed files no longer contain local paths, user or host names
+
 ### Fixed
-- The shrinking sphere's `npart` uses r < R, as the loop does, when it stops before shrinking
 - `ReadGC21.read_halo(randomsample=n)` returns exactly n particles (it drew with replacement)
-- `nba.ios.snap_reader` no longer calls `logging.basicConfig` on import; header fields are logged
-  at DEBUG level
+- The shrinking sphere's `npart` uses r < R, as the loop does, when it stops before shrinking
+- `Reading_GC21_MWLMC_snapshots.ipynb` centered the MW on its first disk particle
+  (`min_potential(disk_pot=True)`) and read the LMC from the isolated MW simulation
 
 ## [0.3.0] - 2026-10-02
 ### Added
