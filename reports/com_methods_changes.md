@@ -1,7 +1,9 @@
 # COM methods: changes after the MWLMC5_b0 assessment
 
 This note lists the changes made in response to `com_methods_suggestions.md`, what to re-test,
-and what was left out. The changes are on the `devel` branch, on top of `3ff4881`.
+and what was left out. The code changes are commits `1ec6fc4` (`com_methods.py`) and
+`e39177f` (`iter_orbit`, `ReadGC21`, tutorial) on the `devel` branch: test `devel` at or after
+`e39177f`.
 
 ## Summary
 
@@ -86,6 +88,21 @@ and what was left out. The changes are on the `devel` branch, on top of `3ff4881
    - `info["radius"]` and `info["density"]` show when the core dissolves, and agree with the
      snapshots where you stop trusting the centre;
    - the time runs continuously through snap 400.
+   **Choosing `rvel_factor` (or `nvel`).** The value 5 above is a placeholder. The velocity
+   doesn't feed back into the position, so run the shrinking sphere once per snapshot and compute
+   the velocity for several regions from the same centre: `rvel_factor` = 2, 5, 10, 20, `nvel` =
+   10⁴, 10⁵, and the old 20 kpc sphere. Compare each against the finite-difference velocity of
+   the orbit, (x[k+1] − x[k−1]) / (t[k+1] − t[k−1]), using header times in code units so the
+   result is in km/s. This is an independent check: the velocity of the centre should equal
+   the rate of change of its position. Pick the smallest region where:
+   - the residual against the finite difference is smallest, and stays small near pericentre and
+     after 6 Gyr, where the 20 kpc sphere picks up debris;
+   - the velocity stops changing when the region grows (a plateau);
+   - the snapshot-to-snapshot change in velocity is not dominated by Poisson noise, about
+     σ / √nvel with nvel taken from `info`.
+
+   Use the finite difference only where the centre is continuous: it is meaningless across a
+   jump.
 2. **Check that nothing changed without the new options.** With the old arguments
    (`rcut_vel=20`, no `r0`, no softening), the shrinking-sphere orbits should match the
    previous `MWLMC5_b0_lmc_orbit_*.txt` files exactly.
