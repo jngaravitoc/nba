@@ -1,0 +1,60 @@
+# Build the documentation (docs/) on every push and pull request, and publish
+# it with GitHub Pages at https://jngaravitoc.github.io/nba/ from main (named
+# in the two `if:` lines below).
+# The tutorial notebooks are committed with their outputs and not run, so the
+# build needs no simulation data.
+#
+# One-time setup in the repository: Settings > Pages > Source: GitHub Actions.
+
+name: Documentation
+
+on:
+  push:
+    branches: [ "main", "devel" ]
+  pull_request:
+  workflow_dispatch:
+
+# One deployment at a time; a newer push cancels a pending one
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+    - name: Install nba with the docs extra
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install ".[docs]"
+    - name: Test the examples in the pages
+      run: |
+        python -m pytest --doctest-plus --doctest-rst docs/
+    - name: Build the HTML
+      run: |
+        make -C docs html
+    - name: Upload the site
+      if: github.event_name != 'pull_request' && github.ref_name == 'main'
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: docs/_build/html
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref_name == 'main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
