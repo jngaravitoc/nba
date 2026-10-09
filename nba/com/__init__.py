@@ -1,1 +1,1 @@
-from .com_methods import CenterHalo
+from .com_methods import CenterHalo, ssphere_numba
