@@ -55,13 +55,16 @@ if __name__ == "__main__":
     parser.add_argument("--methods", nargs="+", choices=METHODS, default=list(METHODS))
     parser.add_argument("--rcut-vel", type=float, default=20.0,
                         help="Radius used for the COM velocity by the shrinking sphere methods")
-    parser.add_argument("--rvel-factor", type=float, default=None,
+    parser.add_argument("--rvel-factor", type=float, default=5.0,
                         help="Use the particles within this factor times the final sphere radius "
                              "for the COM velocity instead of --rcut-vel")
     parser.add_argument("--softening", type=float, default=0.08,
                         help="Softening of the LMC dark matter particles (GC21: 0.08 kpc)")
     parser.add_argument("--r0", type=float, default=15.0,
                         help="Start each shrinking sphere within r0 of the previous center")
+    parser.add_argument("--min-density-ratio", type=float, default=0.01,
+                        help="Warn when the density in the final sphere falls below this fraction "
+                             "of its first value: the LMC has dissolved")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
@@ -87,7 +90,7 @@ if __name__ == "__main__":
         orbit_steps = iter_orbit(args.path, args.snapname, snapshots, halo="LMC",
                                  com_method=args.methods, rcut_vel=args.rcut_vel,
                                  rvel_factor=args.rvel_factor, softening=args.softening,
-                                 r0=args.r0)
+                                 r0=args.r0, min_density_ratio=args.min_density_ratio)
         for k, sim_time, centers in orbit_steps:
             for method, (pos_com, vel_com) in centers.items():
                 row = np.concatenate([[k, sim_time], pos_com, vel_com])
